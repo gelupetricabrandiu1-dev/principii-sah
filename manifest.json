@@ -1,6 +1,6 @@
 {
-  "name": "Principii de Șah",
-  "short_name": "Principii Șah",
+  "name": "Chess Principles",
+  "short_name": "Chess Principles",
   "description": "35+ principii clasice de șah, exersate ca puzzle-uri, plus joc live contra calculatorului.",
   "start_url": "./index.html",
   "scope": "./",
