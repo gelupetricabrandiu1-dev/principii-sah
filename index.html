@@ -503,6 +503,24 @@ button.btn:disabled{opacity:.45; cursor:default;}
 .legend i.g{background:var(--good);}
 .legend i.b{background:var(--bad);}
 .source-note{font-size:.72rem; color:var(--text-dim); border-top:1px solid var(--border); padding-top:10px;}
+@media (max-width:760px){
+  body.game-page-active{padding-inline:8px;}
+  body.game-page-active .wrap{gap:10px;}
+  body.game-page-active .top h1{font-size:1.3rem;}
+  body.game-page-active .top .subtitle{display:none;}
+  body.game-page-active .savebar .save-status{display:none;}
+  body.game-page-active .savebar .save-btn{padding:7px 12px; font-size:.78rem;}
+  body.game-page-active .board-card{padding:10px; gap:10px;}
+  body.game-page-active .game-actions{gap:6px;}
+  body.game-page-active .game-actions .btn{
+    flex:1 1 0; min-height:48px; padding:8px 4px; font-size:.8rem; line-height:1.15;
+    display:flex; align-items:center; justify-content:center; text-align:center;
+  }
+  body.game-page-active .game-level-row{padding:8px 10px;}
+  body.game-page-active .game-level-slider{height:8px;}
+  body.game-page-active .game-log-card{max-height:340px;}
+  body.game-page-active .game-log{max-height:280px;}
+}
 </style>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Public+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
@@ -664,6 +682,15 @@ button.btn:disabled{opacity:.45; cursor:default;}
         <span id="gameTurnLabel">La mutare: <b>Alb</b></span>
         <span id="gameStatusLabel">Joci cu Albul</span>
       </div>
+      <div class="actions game-actions">
+        <button class="btn primary" id="newGameBtn" type="button">♟ Joc nou</button>
+        <button class="btn" id="undoGameBtn" type="button">↺ Anulează</button>
+        <button class="btn hint-btn" id="hintBtn" type="button" title="Ce principiu se aplică acum?">? Indiciu</button>
+      </div>
+      <div class="hint-panel" id="hintPanel">
+        <div class="hint-title" id="hintTitle"></div>
+        <p id="hintText"></p>
+      </div>
       <div class="elo-row">
         <span class="elo-badge" id="eloBadge" title="Ratingul tău ELO estimat">🏆 ELO <b id="eloValue">1200</b></span>
         <span class="elo-delta" id="eloDelta"></span>
@@ -675,15 +702,6 @@ button.btn:disabled{opacity:.45; cursor:default;}
           <span class="glr-name" id="gameLevelName">Mediu+</span>
         </div>
         <input type="range" min="1" max="15" step="1" value="8" class="game-level-slider" id="gameLevelSlider">
-      </div>
-      <div class="actions">
-        <button class="btn primary" id="newGameBtn" type="button">♟ Joc nou</button>
-        <button class="btn" id="undoGameBtn" type="button">↺ Anulează ultima mutare</button>
-        <button class="btn hint-btn" id="hintBtn" type="button" title="Ce principiu se aplică acum?">? Indiciu</button>
-      </div>
-      <div class="hint-panel" id="hintPanel">
-        <div class="hint-title" id="hintTitle"></div>
-        <p id="hintText"></p>
       </div>
     </div>
     <div class="content-card game-log-card">
@@ -2653,6 +2671,8 @@ function applyPageVisibility(){
   document.getElementById("navstrip").style.display=isGame?"none":"flex";
   document.getElementById("levelrow").style.display=(isGame||isDefense||isBulkTactics)?"none":"flex";
   document.getElementById("techniqueFilterRow").style.display=isBulkTactics?"flex":"none";
+  document.body.classList.toggle("game-page-active",isGame);
+  document.getElementById("progress").style.display=isGame?"none":"";
 }
 
 function loadProgress(){
@@ -4995,56 +5015,56 @@ tabBase:"Principii de bază",tabAdvanced:"Principii avansate",tabTactics:"Tactic
 diffBeginner:"Începător",diffAdvanced:"Avansat",levelLabel:"Nivel de dificultate:",
 retryBtn:"↺ Încearcă din nou",nextBtn:"Următorul principiu →",puzzleHint:"? Indiciu",
 settingsLabel:"Setări",settingsTitle:"Setări",themeLabel:"Temă",langLabel:"Limbă",closeBtn:"Închide",volumeLabel:"Volum",colorPickTitle:"Cu ce culoare joci?",colorPickWhite:"Alb",colorPickBlack:"Negru",eloHistoryBtn:"📊 Istoric",eloHistoryTitle:"Istoric partide",eloResetBtn:"Resetează istoricul",techniqueFilterLabel:"Tehnică:",
-gameNewBtn:"♟ Joc nou",gameUndoBtn:"↺ Anulează ultima mutare",gameHintBtn:"? Indiciu",gameLevelLabel:"Dificultate calculator: nivel",playingWhite:"Joci cu Albul"},
+gameNewBtn:"♟ Joc nou",gameUndoBtn:"↺ Anulează",gameHintBtn:"? Indiciu",gameLevelLabel:"Dificultate calculator: nivel",playingWhite:"Joci cu Albul"},
 en:{appTitle:"Chess Principles",appSubtitle:"35 classic rules, explained and practiced as puzzles",
 saveBtn:"💾 Save progress",saveStatus:"Your progress is remembered automatically in this browser; click “Save” to keep it if you switch browsers or devices.",
 tabBase:"Basic Principles",tabAdvanced:"Advanced Principles",tabTactics:"Tactics & Strategy",tabEndgames:"Motifs & Endgames",tabDefense:"Defense",tabCaptures:"Capture Tactics",tabLive:"Live Game vs. Computer",
 diffBeginner:"Beginner",diffAdvanced:"Advanced",levelLabel:"Difficulty level:",
 retryBtn:"↺ Try again",nextBtn:"Next principle →",puzzleHint:"? Hint",
 settingsLabel:"Settings",settingsTitle:"Settings",themeLabel:"Theme",langLabel:"Language",closeBtn:"Close",volumeLabel:"Volume",colorPickTitle:"Which color do you play?",colorPickWhite:"White",colorPickBlack:"Black",eloHistoryBtn:"📊 History",eloHistoryTitle:"Game history",eloResetBtn:"Reset history",techniqueFilterLabel:"Technique:",
-gameNewBtn:"♟ New game",gameUndoBtn:"↺ Undo last move",gameHintBtn:"? Hint",gameLevelLabel:"Computer difficulty: level",playingWhite:"You're playing White"},
+gameNewBtn:"♟ New game",gameUndoBtn:"↺ Undo",gameHintBtn:"? Hint",gameLevelLabel:"Computer difficulty: level",playingWhite:"You're playing White"},
 es:{appTitle:"Principios de Ajedrez",appSubtitle:"35 reglas clásicas, explicadas y practicadas como puzzles",
 saveBtn:"💾 Guardar progreso",saveStatus:"Tu progreso se guarda automáticamente en este navegador; pulsa «Guardar» para conservarlo si cambias de navegador o dispositivo.",
 tabBase:"Principios básicos",tabAdvanced:"Principios avanzados",tabTactics:"Táctica y estrategia",tabEndgames:"Motivos y finales",tabDefense:"Defensa",tabCaptures:"Tácticas de captura",tabLive:"Partida en vivo vs. ordenador",
 diffBeginner:"Principiante",diffAdvanced:"Avanzado",levelLabel:"Nivel de dificultad:",
 retryBtn:"↺ Inténtalo de nuevo",nextBtn:"Siguiente principio →",puzzleHint:"? Pista",
 settingsLabel:"Ajustes",settingsTitle:"Ajustes",themeLabel:"Tema",langLabel:"Idioma",closeBtn:"Cerrar",volumeLabel:"Volumen",colorPickTitle:"¿Con qué color juegas?",colorPickWhite:"Blancas",colorPickBlack:"Negras",eloHistoryBtn:"📊 Historial",eloHistoryTitle:"Historial de partidas",eloResetBtn:"Restablecer historial",techniqueFilterLabel:"Técnica:",
-gameNewBtn:"♟ Partida nueva",gameUndoBtn:"↺ Deshacer última jugada",gameHintBtn:"? Pista",gameLevelLabel:"Dificultad del ordenador: nivel",playingWhite:"Juegas con Blancas"},
+gameNewBtn:"♟ Partida nueva",gameUndoBtn:"↺ Deshacer",gameHintBtn:"? Pista",gameLevelLabel:"Dificultad del ordenador: nivel",playingWhite:"Juegas con Blancas"},
 fr:{appTitle:"Principes des Échecs",appSubtitle:"35 règles classiques, expliquées et pratiquées sous forme de puzzles",
 saveBtn:"💾 Enregistrer la progression",saveStatus:"Votre progression est mémorisée automatiquement dans ce navigateur ; cliquez sur « Enregistrer » pour la conserver si vous changez de navigateur ou d'appareil.",
 tabBase:"Principes de base",tabAdvanced:"Principes avancés",tabTactics:"Tactique et stratégie",tabEndgames:"Motifs et finales",tabDefense:"Défense",tabCaptures:"Tactiques de capture",tabLive:"Partie en direct vs. ordinateur",
 diffBeginner:"Débutant",diffAdvanced:"Avancé",levelLabel:"Niveau de difficulté :",
 retryBtn:"↺ Réessayer",nextBtn:"Principe suivant →",puzzleHint:"? Indice",
 settingsLabel:"Paramètres",settingsTitle:"Paramètres",themeLabel:"Thème",langLabel:"Langue",closeBtn:"Fermer",volumeLabel:"Volume",colorPickTitle:"Avec quelle couleur joues-tu ?",colorPickWhite:"Blancs",colorPickBlack:"Noirs",eloHistoryBtn:"📊 Historique",eloHistoryTitle:"Historique des parties",eloResetBtn:"Réinitialiser l'historique",techniqueFilterLabel:"Technique :",
-gameNewBtn:"♟ Nouvelle partie",gameUndoBtn:"↺ Annuler le dernier coup",gameHintBtn:"? Indice",gameLevelLabel:"Difficulté de l'ordinateur : niveau",playingWhite:"Vous jouez les Blancs"},
+gameNewBtn:"♟ Nouvelle partie",gameUndoBtn:"↺ Annuler",gameHintBtn:"? Indice",gameLevelLabel:"Difficulté de l'ordinateur : niveau",playingWhite:"Vous jouez les Blancs"},
 de:{appTitle:"Schachprinzipien",appSubtitle:"35 klassische Regeln, erklärt und als Rätsel geübt",
 saveBtn:"💾 Fortschritt speichern",saveStatus:"Dein Fortschritt wird in diesem Browser automatisch gespeichert; klicke auf „Speichern“, um ihn bei einem Browser- oder Gerätewechsel zu behalten.",
 tabBase:"Grundprinzipien",tabAdvanced:"Fortgeschrittene Prinzipien",tabTactics:"Taktik und Strategie",tabEndgames:"Motive und Endspiele",tabDefense:"Verteidigung",tabCaptures:"Schlagtaktiken",tabLive:"Live-Partie gegen Computer",
 diffBeginner:"Anfänger",diffAdvanced:"Fortgeschritten",levelLabel:"Schwierigkeitsgrad:",
 retryBtn:"↺ Erneut versuchen",nextBtn:"Nächstes Prinzip →",puzzleHint:"? Hinweis",
 settingsLabel:"Einstellungen",settingsTitle:"Einstellungen",themeLabel:"Design",langLabel:"Sprache",closeBtn:"Schließen",volumeLabel:"Lautstärke",colorPickTitle:"Mit welcher Farbe spielst du?",colorPickWhite:"Weiß",colorPickBlack:"Schwarz",eloHistoryBtn:"📊 Verlauf",eloHistoryTitle:"Partienverlauf",eloResetBtn:"Verlauf zurücksetzen",techniqueFilterLabel:"Technik:",
-gameNewBtn:"♟ Neues Spiel",gameUndoBtn:"↺ Letzten Zug zurücknehmen",gameHintBtn:"? Hinweis",gameLevelLabel:"Computerschwierigkeit: Stufe",playingWhite:"Du spielst Weiß"},
+gameNewBtn:"♟ Neues Spiel",gameUndoBtn:"↺ Zurück",gameHintBtn:"? Hinweis",gameLevelLabel:"Computerschwierigkeit: Stufe",playingWhite:"Du spielst Weiß"},
 it:{appTitle:"Principi degli Scacchi",appSubtitle:"35 regole classiche, spiegate ed esercitate come puzzle",
 saveBtn:"💾 Salva progressi",saveStatus:"I tuoi progressi vengono salvati automaticamente in questo browser; premi «Salva» per conservarli se cambi browser o dispositivo.",
 tabBase:"Principi di base",tabAdvanced:"Principi avanzati",tabTactics:"Tattica e strategia",tabEndgames:"Motivi e finali",tabDefense:"Difesa",tabCaptures:"Tattiche di cattura",tabLive:"Partita dal vivo vs. computer",
 diffBeginner:"Principiante",diffAdvanced:"Avanzato",levelLabel:"Livello di difficoltà:",
 retryBtn:"↺ Riprova",nextBtn:"Principio successivo →",puzzleHint:"? Suggerimento",
 settingsLabel:"Impostazioni",settingsTitle:"Impostazioni",themeLabel:"Tema",langLabel:"Lingua",closeBtn:"Chiudi",volumeLabel:"Volume",colorPickTitle:"Con quale colore giochi?",colorPickWhite:"Bianco",colorPickBlack:"Nero",eloHistoryBtn:"📊 Cronologia",eloHistoryTitle:"Cronologia partite",eloResetBtn:"Reimposta cronologia",techniqueFilterLabel:"Tecnica:",
-gameNewBtn:"♟ Nuova partita",gameUndoBtn:"↺ Annulla ultima mossa",gameHintBtn:"? Suggerimento",gameLevelLabel:"Difficoltà del computer: livello",playingWhite:"Giochi con il Bianco"},
+gameNewBtn:"♟ Nuova partita",gameUndoBtn:"↺ Annulla",gameHintBtn:"? Suggerimento",gameLevelLabel:"Difficoltà del computer: livello",playingWhite:"Giochi con il Bianco"},
 pt:{appTitle:"Princípios do Xadrez",appSubtitle:"35 regras clássicas, explicadas e praticadas como puzzles",
 saveBtn:"💾 Guardar progresso",saveStatus:"O teu progresso é guardado automaticamente neste navegador; clica em «Guardar» para o manter se mudares de navegador ou dispositivo.",
 tabBase:"Princípios básicos",tabAdvanced:"Princípios avançados",tabTactics:"Tática e estratégia",tabEndgames:"Motivos e finais",tabDefense:"Defesa",tabCaptures:"Táticas de captura",tabLive:"Jogo ao vivo vs. computador",
 diffBeginner:"Iniciante",diffAdvanced:"Avançado",levelLabel:"Nível de dificuldade:",
 retryBtn:"↺ Tentar novamente",nextBtn:"Próximo princípio →",puzzleHint:"? Dica",
 settingsLabel:"Definições",settingsTitle:"Definições",themeLabel:"Tema",langLabel:"Idioma",closeBtn:"Fechar",volumeLabel:"Volume",colorPickTitle:"Com que cor jogas?",colorPickWhite:"Brancas",colorPickBlack:"Pretas",eloHistoryBtn:"📊 Histórico",eloHistoryTitle:"Histórico de partidas",eloResetBtn:"Repor histórico",techniqueFilterLabel:"Técnica:",
-gameNewBtn:"♟ Novo jogo",gameUndoBtn:"↺ Desfazer última jogada",gameHintBtn:"? Dica",gameLevelLabel:"Dificuldade do computador: nível",playingWhite:"Jogas com as Brancas"},
+gameNewBtn:"♟ Novo jogo",gameUndoBtn:"↺ Desfazer",gameHintBtn:"? Dica",gameLevelLabel:"Dificuldade do computador: nível",playingWhite:"Jogas com as Brancas"},
 ru:{appTitle:"Принципы шахмат",appSubtitle:"35 классических правил, объяснённых и отработанных в виде задач",
 saveBtn:"💾 Сохранить прогресс",saveStatus:"Ваш прогресс автоматически сохраняется в этом браузере; нажмите «Сохранить», чтобы сохранить его при смене браузера или устройства.",
 tabBase:"Базовые принципы",tabAdvanced:"Продвинутые принципы",tabTactics:"Тактика и стратегия",tabEndgames:"Мотивы и эндшпили",tabDefense:"Защита",tabCaptures:"Тактика взятий",tabLive:"Живая партия против компьютера",
 diffBeginner:"Новичок",diffAdvanced:"Продвинутый",levelLabel:"Уровень сложности:",
 retryBtn:"↺ Попробовать снова",nextBtn:"Следующий принцип →",puzzleHint:"? Подсказка",
 settingsLabel:"Настройки",settingsTitle:"Настройки",themeLabel:"Тема",langLabel:"Язык",closeBtn:"Закрыть",volumeLabel:"Громкость",colorPickTitle:"Каким цветом играете?",colorPickWhite:"Белые",colorPickBlack:"Чёрные",eloHistoryBtn:"📊 История",eloHistoryTitle:"История партий",eloResetBtn:"Сбросить историю",techniqueFilterLabel:"Техника:",
-gameNewBtn:"♟ Новая партия",gameUndoBtn:"↺ Отменить последний ход",gameHintBtn:"? Подсказка",gameLevelLabel:"Сложность компьютера: уровень",playingWhite:"Вы играете белыми"},
+gameNewBtn:"♟ Новая партия",gameUndoBtn:"↺ Отменить",gameHintBtn:"? Подсказка",gameLevelLabel:"Сложность компьютера: уровень",playingWhite:"Вы играете белыми"},
 zh:{appTitle:"国际象棋原理",appSubtitle:"35条经典规则，通过测试题讲解与练习",
 saveBtn:"💾 保存进度",saveStatus:"您的进度会自动保存在此浏览器中；点击「保存」以便更换浏览器或设备后仍能保留。",
 tabBase:"基础原理",tabAdvanced:"进阶原理",tabTactics:"战术与策略",tabEndgames:"主题与残局",tabDefense:"防守",tabCaptures:"吃子战术",tabLive:"人机实时对战",
@@ -5065,7 +5085,7 @@ tabBase:"المبادئ الأساسية",tabAdvanced:"المبادئ المتق
 diffBeginner:"مبتدئ",diffAdvanced:"متقدم",levelLabel:"مستوى الصعوبة:",
 retryBtn:"↺ حاول مجددًا",nextBtn:"← المبدأ التالي",puzzleHint:"؟ تلميح",
 settingsLabel:"الإعدادات",settingsTitle:"الإعدادات",themeLabel:"السمة",langLabel:"اللغة",closeBtn:"إغلاق",volumeLabel:"مستوى الصوت",colorPickTitle:"بأي لون تلعب؟",colorPickWhite:"أبيض",colorPickBlack:"أسود",eloHistoryBtn:"📊 السجل",eloHistoryTitle:"سجل المباريات",eloResetBtn:"إعادة تعيين السجل",techniqueFilterLabel:"التقنية:",
-gameNewBtn:"♟ لعبة جديدة",gameUndoBtn:"↺ تراجع عن آخر نقلة",gameHintBtn:"؟ تلميح",gameLevelLabel:"صعوبة الحاسوب: المستوى",playingWhite:"أنت تلعب بالأبيض"}
+gameNewBtn:"♟ لعبة جديدة",gameUndoBtn:"↺ تراجع",gameHintBtn:"؟ تلميح",gameLevelLabel:"صعوبة الحاسوب: المستوى",playingWhite:"أنت تلعب بالأبيض"}
 };
 const STRING_I18N={};
 function L(s){ const d=STRING_I18N[currentLang]; const v=d&&d[s]; return v!==undefined?v:s; }
@@ -6790,7 +6810,6 @@ try{
   } else { boot(); }
 }catch(e){ boot(); }
 </script>
-
 
 <script>
 if("serviceWorker" in navigator){
