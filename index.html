@@ -580,6 +580,15 @@ button.btn:disabled{opacity:.45; cursor:default;}
   #openingsContainer .content-card{gap:10px; padding:14px;}
 }
 .arrow-layer.arrow-flipped{transform:rotate(180deg);}
+@media (min-width:761px){
+  .main{grid-template-columns:minmax(320px,min(max(320px,calc(100vh - 380px)),580px)) 1fr; gap:28px;}
+  .main .board-outer{max-width:min(max(320px,calc(100vh - 380px)),580px);}
+  .game-wrap{grid-template-columns:minmax(320px,min(max(320px,calc(100vh - 380px)),580px)) 1fr;}
+  .game-wrap .board-outer{max-width:min(max(320px,calc(100vh - 380px)),580px)!important;}
+  #openingsContainer{grid-template-columns:minmax(320px,min(max(320px,calc(100vh - 380px)),580px)) 1fr;}
+  #openingsContainer .board-outer{max-width:min(max(320px,calc(100vh - 380px)),580px)!important;}
+  .content-card{padding:26px 30px;}
+}
 </style>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Public+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
