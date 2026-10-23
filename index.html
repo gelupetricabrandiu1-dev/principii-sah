@@ -562,6 +562,16 @@ button.btn:disabled{opacity:.45; cursor:default;}
   .btn,.navchip,.om-move,.nav-compact-btn{transition:transform .12s ease, background .2s ease;}
   .btn:active,.navchip:active,.om-move:active,.nav-compact-btn:active{transform:scale(.95);}
 }
+@media (max-width:760px){
+  body{padding-bottom:104px;}
+  .top h1{font-size:1.35rem;}
+  .top .subtitle{display:none;}
+  .savebar .save-status{display:none;}
+  .board-card{padding:10px; gap:8px;}
+  .board-outer{max-width:100%;}
+  .main .board-card > .actions{position:fixed; left:0; right:0; bottom:0; z-index:40; margin:0; padding:10px 10px calc(10px + env(safe-area-inset-bottom,0px)); background:var(--surface); border-top:1px solid var(--border); box-shadow:0 -6px 18px rgba(0,0,0,.08); flex-wrap:nowrap; gap:8px;}
+  .main .board-card > .actions .btn{flex:1 1 0; min-height:46px; padding:8px 4px; font-size:.82rem; line-height:1.15; white-space:normal;}
+}
 </style>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Public+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
@@ -574,6 +584,7 @@ button.btn:disabled{opacity:.45; cursor:default;}
     </div>
     <div class="top-right">
       <div class="progress" id="progress">0 / 35 rezolvate</div>
+      <button class="settings-btn" id="fsBtn" type="button" title="Ecran complet" aria-label="Ecran complet">⛶</button>
       <button class="settings-btn" id="settingsBtn" type="button" title="Setări" aria-label="Setări">⚙</button>
     </div>
   </div>
@@ -2935,6 +2946,37 @@ function activeData(p){
     return merged;
   }
   return p;
+}
+
+/* ---- fullscreen + swipe ---- */
+function fsInit(){
+  const btn=document.getElementById("fsBtn");
+  if(!btn) return;
+  if(!document.documentElement.requestFullscreen){ btn.style.display="none"; return; }
+  btn.addEventListener("click",()=>{
+    const p=document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen();
+    if(p&&p.catch) p.catch(()=>{});
+  });
+  document.addEventListener("fullscreenchange",()=>{
+    btn.textContent=document.fullscreenElement?"⤡":"⛶";
+    btn.title=document.fullscreenElement?"Ieși din ecran complet":"Ecran complet";
+  });
+}
+function swipeInit(){
+  const card=document.querySelector(".main .board-card");
+  if(!card) return;
+  let sx=0, sy=0, t0=0;
+  card.addEventListener("touchstart",e=>{
+    if(e.touches.length!==1) return;
+    sx=e.touches[0].clientX; sy=e.touches[0].clientY; t0=Date.now();
+  },{passive:true});
+  card.addEventListener("touchend",e=>{
+    if(!window.matchMedia("(max-width:760px)").matches) return;
+    const t=e.changedTouches[0];
+    const dx=t.clientX-sx, dy=t.clientY-sy;
+    if(Date.now()-t0>700 || Math.abs(dx)<70 || Math.abs(dy)>50) return;
+    loadPrinciple(currentIndex+(dx<0?1:-1));
+  },{passive:true});
 }
 
 /* ---- phone navigation ---- */
@@ -7647,6 +7689,8 @@ function boot(){
   renderTechniqueFilterSelect();
   buildPageSelect();
   diagInit();
+  fsInit();
+  swipeInit();
   document.getElementById("techniqueFilterSelect").addEventListener("change",(e)=>{
     if(currentPage===8){ page8ThemeFilter=e.target.value; savePage8Filter(); }
     else { page6ThemeFilter=e.target.value; savePage6Filter(); }
