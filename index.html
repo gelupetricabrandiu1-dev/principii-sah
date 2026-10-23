@@ -530,6 +530,15 @@ button.btn:disabled{opacity:.45; cursor:default;}
 .open-filter{display:flex; flex-direction:column; gap:8px;}
 .open-filter input[type=search]{font-family:'Public Sans',sans-serif; font-size:.9rem; padding:10px 12px; border-radius:10px; border:1px solid var(--border); background:var(--surface-2); color:var(--text); width:100%;}
 .open-toggle{font-size:.82rem; color:var(--text-dim); display:flex; align-items:center; gap:6px; cursor:pointer;}
+.pagesel{display:none;}
+.diag-toggle{display:none;}
+@media (max-width:760px){
+  .pagetabs{display:none;}
+  .pagesel{display:block; width:100%; font-size:1rem; padding:12px 14px; font-weight:600;}
+  .diag-toggle{display:block; width:100%; min-height:44px; font-family:'Public Sans',sans-serif; font-size:.9rem; font-weight:600; padding:10px 14px; border-radius:10px; border:1px solid var(--accent); background:var(--surface); color:var(--accent); cursor:pointer;}
+  .content-card .diagram-block{display:none;}
+  .content-card.show-diagram .diagram-block{display:flex;}
+}
 </style>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Public+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
@@ -604,6 +613,7 @@ button.btn:disabled{opacity:.45; cursor:default;}
     <span class="save-status" id="saveStatus">Progresul se ține minte automat în acest browser; apasă „Salvează” ca să-l păstrezi și dacă schimbi browserul sau dispozitivul.</span>
   </div>
 
+  <select class="lang-select pagesel" id="pageSelect" aria-label="Pagină"></select>
   <div class="pagetabs" id="pagetabs">
     <button class="pagetab active" data-page="1" type="button">Principii de bază<span class="count">35</span></button>
     <button class="pagetab" data-page="2" type="button">Principii avansate<span class="count">16</span></button>
@@ -659,6 +669,7 @@ button.btn:disabled{opacity:.45; cursor:default;}
         <h2 id="principleTitle">—</h2>
       </div>
       <p id="principleText"></p>
+      <button type="button" class="diag-toggle" id="diagToggle"></button>
       <div class="diagram-block">
         <div class="diagram-board">
           <div class="board-outer" style="max-width:240px;">
@@ -2894,10 +2905,39 @@ function activeData(p){
   return p;
 }
 
+/* ---- phone navigation ---- */
+function buildPageSelect(){
+  const sel=document.getElementById("pageSelect");
+  if(!sel) return;
+  sel.innerHTML=[...document.querySelectorAll(".pagetab")].map(b=>{
+    const c=b.querySelector(".count");
+    const name=c?b.textContent.slice(0,b.textContent.length-c.textContent.length).trim():b.textContent;
+    return '<option value="'+b.dataset.page+'">'+name+(c?' ('+c.textContent+')':'')+'</option>';
+  }).join("");
+  sel.value=String(currentPage);
+  sel.onchange=()=>switchPage(Number(sel.value));
+  updateDiagToggle();
+}
+function updateDiagToggle(){
+  const btn=document.getElementById("diagToggle");
+  if(!btn) return;
+  const open=btn.parentElement.classList.contains("show-diagram");
+  btn.textContent=open?L("Ascunde diagrama ▴"):L("Arată diagrama ▾");
+}
+function diagInit(){
+  const btn=document.getElementById("diagToggle");
+  if(!btn) return;
+  btn.addEventListener("click",()=>{
+    btn.parentElement.classList.toggle("show-diagram");
+    updateDiagToggle();
+  });
+}
+
 function syncPageTabs(){
   document.querySelectorAll(".pagetab").forEach(b=>{
     b.classList.toggle("active", Number(b.dataset.page)===currentPage);
   });
+  const ps=document.getElementById("pageSelect"); if(ps) ps.value=String(currentPage);
 }
 
 function switchPage(pg){
@@ -5461,6 +5501,7 @@ gameNewBtn:"♟ لعبة جديدة",gameUndoBtn:"↺ تراجع",gameHintBtn:"�
 const STRING_I18N={};
 function L(s){ const d=STRING_I18N[currentLang]; const v=d&&d[s]; return v!==undefined?v:s; }
 STRING_I18N.en={
+"Arată diagrama ▾":"Show diagram ▾","Ascunde diagrama ▴":"Hide diagram ▴",
 "Controlează centrul tăblii":"Control the center of the board",
 "Pătratele centrale (d4, d5, e4, e5) sunt cele mai importante de pe tablă: piesele plasate spre centru controlează mai multe câmpuri și au mai multă mobilitate, în timp ce cele de la margine influențează mult mai puțin jocul. De aceea, primele mutări bune ocupă sau presează centrul.":"The central squares (d4, d5, e4, e5) are the most important on the board: pieces placed toward the center control more squares and have more mobility, while those on the edge influence the game far less. That's why the first good moves occupy or press on the center.",
 "Ai continuat lupta pentru centru cu d4, extinzând controlul central.":"You continued the fight for the center with d4, extending your central control.",
@@ -7276,6 +7317,7 @@ function applyLanguage(){
   const techniqueFilterLabelEl=document.getElementById("techniqueFilterLabel");
   if(techniqueFilterLabelEl) techniqueFilterLabelEl.textContent=t("techniqueFilterLabel");
   if(document.getElementById("techniqueFilterSelect").children.length) renderTechniqueFilterSelect();
+  buildPageSelect();
   const retryBtnEl=document.getElementById("retryBtn");
   if(retryBtnEl) retryBtnEl.textContent=t("retryBtn");
   const nextBtnEl=document.getElementById("nextBtn");
@@ -7451,6 +7493,8 @@ function boot(){
   if(currentPage===7) currentPage=1;
   applyPageVisibility();
   renderTechniqueFilterSelect();
+  buildPageSelect();
+  diagInit();
   document.getElementById("techniqueFilterSelect").addEventListener("change",(e)=>{
     if(currentPage===8){ page8ThemeFilter=e.target.value; savePage8Filter(); }
     else { page6ThemeFilter=e.target.value; savePage6Filter(); }
