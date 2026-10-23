@@ -521,6 +521,12 @@ button.btn:disabled{opacity:.45; cursor:default;}
   body.game-page-active .game-log-card{max-height:340px;}
   body.game-page-active .game-log{max-height:280px;}
 }
+.open-result{font-weight:700;color:var(--good);min-height:1.2em;font-size:.9rem;text-align:center;}
+.open-controls .btn{flex:1 1 auto; min-width:48px;}
+.open-moves{display:flex; flex-wrap:wrap; align-items:center; gap:5px 4px; max-height:360px; overflow-y:auto; padding-right:4px;}
+.om-num{font-family:'JetBrains Mono',monospace; font-size:.75rem; color:var(--text-dim); margin:0 2px 0 8px;}
+.om-move{font-family:'JetBrains Mono',monospace; font-size:.8rem; padding:4px 8px; border-radius:6px; border:1px solid var(--border); background:var(--surface-2); color:var(--text); cursor:pointer;}
+.om-move.active{background:var(--accent); color:#2a1d05; border-color:var(--accent);}
 </style>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Public+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
@@ -604,6 +610,7 @@ button.btn:disabled{opacity:.45; cursor:default;}
     <button class="pagetab" data-page="6" type="button">Tactici de capturare<span class="count">900</span></button>
     <button class="pagetab" data-page="7" type="button">Joc live vs. calculator</button>
     <button class="pagetab" data-page="8" type="button">Capcane din deschideri<span class="count">174</span></button>
+    <button class="pagetab" data-page="9" type="button">Deschideri<span class="count">69</span></button>
   </div>
 
   <div class="levelrow" id="levelrow">
@@ -668,6 +675,34 @@ button.btn:disabled{opacity:.45; cursor:default;}
     </div>
   </div>
 
+  <div class="game-wrap" id="openingsContainer">
+    <div class="board-card">
+      <div class="board-outer" style="max-width:420px;">
+        <div class="board" id="openBoard"></div>
+      </div>
+      <div class="status-line">
+        <span id="openTurnLabel">La mutare: <b>Alb</b></span>
+        <span id="openStepLabel">0 / 0</span>
+      </div>
+      <div class="open-result" id="openResult"></div>
+      <div class="actions open-controls">
+        <button class="btn" id="openFirst" type="button" title="Începutul liniei">⏮</button>
+        <button class="btn" id="openPrev" type="button" title="Mutarea anterioară">◀</button>
+        <button class="btn primary" id="openNext" type="button" title="Mutarea următoare">▶</button>
+        <button class="btn" id="openLast" type="button" title="Sfârșitul liniei">⏭</button>
+        <button class="btn" id="openAuto" type="button">▶ Redă tot</button>
+      </div>
+    </div>
+    <div class="content-card">
+      <div>
+        <div class="eyebrow">Deschideri</div>
+        <h2 style="font-size:1.3rem;">Linii complete până la mat sau capturarea damei</h2>
+      </div>
+      <p style="margin:0;font-size:.85rem;color:var(--text-dim);line-height:1.5;">Fiecare linie pornește din poziția inițială și se joacă până la capăt: fie mat, fie o damă capturată. Alege deschiderea din listă, apoi parcurge mutările cu butoanele sau apasă direct pe o mutare.</p>
+      <select class="lang-select" id="openingSelect"></select>
+      <div class="open-moves" id="openMoves"></div>
+    </div>
+  </div>
   <div class="game-wrap" id="page5Container">
     <div class="board-card">
       <div class="board-outer" style="max-width:420px;">
@@ -2865,20 +2900,24 @@ function switchPage(pg){
   syncPageTabs();
   applyPageVisibility();
   if(pg===7){ ensureGameStarted(); }
+  else if(pg===9){ openingsEnter(); }
   else { loadPrinciple(0); }
 }
 
 function applyPageVisibility(){
   const isGame=currentPage===7;
+  const isOpen=currentPage===9;
   const isDefense=currentPage===5;
   const isBulkTactics=currentPage===6||currentPage===8;
-  document.querySelector(".main").style.display=isGame?"none":"grid";
+  document.querySelector(".main").style.display=(isGame||isOpen)?"none":"grid";
   document.getElementById("page5Container").classList.toggle("show",isGame);
-  document.getElementById("navstrip").style.display=isGame?"none":"flex";
-  document.getElementById("levelrow").style.display=(isGame||isDefense||isBulkTactics)?"none":"flex";
+  document.getElementById("navstrip").style.display=(isGame||isOpen)?"none":"flex";
+  document.getElementById("levelrow").style.display=(isGame||isDefense||isBulkTactics||isOpen)?"none":"flex";
   document.getElementById("techniqueFilterRow").style.display=isBulkTactics?"flex":"none";
   document.body.classList.toggle("game-page-active",isGame);
-  document.getElementById("progress").style.display=isGame?"none":"";
+  document.getElementById("progress").style.display=(isGame||isOpen)?"none":"";
+  document.getElementById("openingsContainer").classList.toggle("show",isOpen);
+  if(!isOpen) openingsStop();
   renderTechniqueFilterSelect();
 }
 
@@ -2889,7 +2928,7 @@ function loadProgress(){
     const lvl=localStorage.getItem("sah-principii-level");
     if(lvl==="advanced"||lvl==="beginner"){ difficulty=lvl; }
     const pg=localStorage.getItem("sah-principii-page");
-    if(pg==="1"||pg==="2"||pg==="3"||pg==="4"||pg==="5"||pg==="6"||pg==="8"){ currentPage=Number(pg); }
+    if(pg==="1"||pg==="2"||pg==="3"||pg==="4"||pg==="5"||pg==="6"||pg==="8"||pg==="9"){ currentPage=Number(pg); }
   }catch(e){}
   loadGameLevel();
   loadElo();
@@ -5035,6 +5074,92 @@ gameBoardEl.addEventListener("click",(e)=>{
   }
 });
 
+/* ---------- Deschideri: linii complete din poziția inițială ---------- */
+const OPENINGS_DATA=[{"id": 2, "op": "Center Game", "end": "queen", "moves": ["e2e4", "e7e5", "d2d4", "e5d4", "d1d4", "b8c6", "d4a4", "g8f6", "b1c3", "d7d5", "c1g5", "d5e4", "c3e4", "d8e7", "e1c1", "e7e4", "d1d8", "e8d8", "a4e4"], "sans": ["e4", "e5", "d4", "exd4", "Qxd4", "Nc6", "Qa4", "Nf6", "Nc3", "d5", "Bg5", "dxe4", "Nxe4", "Qe7", "O-O-O", "Qxe4", "Rd8+", "Kxd8", "Qxe4"], "winner": "w"}, {"id": 3, "op": "Center Game", "end": "mate", "moves": ["e2e4", "e7e5", "d2d4", "e5d4", "d1d4", "b8c6", "d4e3", "g7g6", "b1c3", "f8g7", "c3d5", "g8e7", "g1e2", "d7d6", "c1d2", "g7b2", "d2c3", "b2a1", "d5f6", "e8f8", "e3h6"], "sans": ["e4", "e5", "d4", "exd4", "Qxd4", "Nc6", "Qe3", "g6", "Nc3", "Bg7", "Nd5", "Nge7", "Ne2", "d6", "Bd2", "Bxb2", "Bc3", "Bxa1", "Nf6+", "Kf8", "Qh6#"], "winner": "w"}, {"id": 4, "op": "Center Game", "end": "mate", "moves": ["e2e4", "e7e5", "d2d4", "e5d4", "d1d4", "b8c6", "d4e3", "f8b4", "c2c3", "b4a5", "f1c4", "g8e7", "e3g3", "e8g8", "h2h4", "e7g6", "h4h5", "g6e5", "c1g5", "d8e8", "g5f6", "g7g6", "h5g6", "e5g6", "g3g6", "h7g6", "h1h8"], "sans": ["e4", "e5", "d4", "exd4", "Qxd4", "Nc6", "Qe3", "Bb4+", "c3", "Ba5", "Bc4", "Nge7", "Qg3", "O-O", "h4", "Ng6", "h5", "Nge5", "Bg5", "Qe8", "Bf6", "g6", "hxg6", "Nxg6", "Qxg6+", "hxg6", "Rh8#"], "winner": "w"}, {"id": 8, "op": "Center Gambit", "end": "mate", "moves": ["e2e4", "e7e5", "d2d4", "e5d4", "g1f3", "f8b4", "c2c3", "d4c3", "b2c3", "b4c5", "f1c4", "d7d5", "c4d5", "d8f6", "c1g5", "f6g6", "d5f7", "e8f8", "d1d8", "f8f7", "f3e5", "f7e6", "d8d5"], "sans": ["e4", "e5", "d4", "exd4", "Nf3", "Bb4+", "c3", "dxc3", "bxc3", "Bc5", "Bc4", "d5", "Bxd5", "Qf6", "Bg5", "Qg6", "Bxf7+", "Kf8", "Qd8+", "Kxf7", "Ne5+", "Ke6", "Qd5#"], "winner": "w"}, {"id": 12, "op": "Danish Gambit", "end": "queen", "moves": ["e2e4", "e7e5", "d2d4", "e5d4", "c2c3", "d4c3", "f1c4", "c3b2", "c1b2", "g8f6", "e4e5", "d8e7", "d1e2", "d7d5", "e5f6", "e7e2", "c4e2"], "sans": ["e4", "e5", "d4", "exd4", "c3", "dxc3", "Bc4", "cxb2", "Bxb2", "Nf6", "e5", "Qe7", "Qe2", "d5", "exf6", "Qxe2+", "Bxe2"], "winner": "w"}, {"id": 19, "op": "Scotch Gambit", "end": "mate", "moves": ["e2e4", "e7e5", "g1f3", "b8c6", "d2d4", "e5d4", "f1c4", "c6a5", "c4f7", "e8f7", "f3e5", "f7e6", "d1d4", "a5c6", "d4d5", "e6f6", "d5f7", "f6e5", "c1f4", "e5e4", "b1c3", "e4d4", "f7d5"], "sans": ["e4", "e5", "Nf3", "Nc6", "d4", "exd4", "Bc4", "Na5", "Bxf7+", "Kxf7", "Ne5+", "Ke6", "Qxd4", "Nc6", "Qd5+", "Kf6", "Qf7+", "Kxe5", "Bf4+", "Kxe4", "Nc3+", "Kd4", "Qd5#"], "winner": "w"}, {"id": 22, "op": "Scotch Gambit", "end": "mate", "moves": ["e2e4", "e7e5", "g1f3", "b8c6", "d2d4", "e5d4", "f1c4", "f8c5", "e1g1", "d7d6", "f3g5", "c6e5", "c4b3", "h7h6", "d1h5", "d8f6", "f2f4", "d4d3", "g1h1", "g7g6", "h5d1", "h6g5", "f4e5", "h8h2", "h1h2", "f6h8", "h2g3", "h8h4", "g3f3", "h4g4"], "sans": ["e4", "e5", "Nf3", "Nc6", "d4", "exd4", "Bc4", "Bc5", "O-O", "d6", "Ng5", "Ne5", "Bb3", "h6", "Qh5", "Qf6", "f4", "d3+", "Kh1", "g6", "Qd1", "hxg5", "fxe5", "Rxh2+", "Kxh2", "Qh8+", "Kg3", "Qh4+", "Kf3", "Qg4#"], "winner": "b"}, {"id": 23, "op": "Scotch Game", "end": "mate", "moves": ["e2e4", "e7e5", "g1f3", "b8c6", "d2d4", "e5d4", "f3d4", "g8e7", "b1c3", "g7g6", "c1g5", "f8g7", "c3d5", "g7d4", "d1d4", "e8g8", "d5f6", "g8h8", "f6g4", "c6d4", "g5f6", "h8g8", "g4h6"], "sans": ["e4", "e5", "Nf3", "Nc6", "d4", "exd4", "Nxd4", "Nge7", "Nc3", "g6", "Bg5", "Bg7", "Nd5", "Bxd4", "Qxd4", "O-O", "Nf6+", "Kh8", "Ng4+", "Nxd4", "Bf6+", "Kg8", "Nh6#"], "winner": "w"}, {"id": 24, "op": "Scotch Game", "end": "mate", "moves": ["e2e4", "e7e5", "g1f3", "b8c6", "d2d4", "e5d4", "f3d4", "f8e7", "f1c4", "g8f6", "e1g1", "c6d4", "d1d4", "d7d6", "f2f4", "b7b6", "e4e5", "d6d5", "c4b5", "c8d7", "e5f6", "e7c5", "f1e1", "e8f8", "f6g7", "f8g8", "g7h8q"], "sans": ["e4", "e5", "Nf3", "Nc6", "d4", "exd4", "Nxd4", "Be7", "Bc4", "Nf6", "O-O", "Nxd4", "Qxd4", "d6", "f4", "b6", "e5", "d5", "Bb5+", "Bd7", "exf6", "Bc5", "Re1+", "Kf8", "fxg7+", "Kg8", "gxh8=Q#"], "winner": "w"}, {"id": 26, "op": "Scotch Game", "end": "mate", "moves": ["e2e4", "e7e5", "g1f3", "b8c6", "d2d4", "e5d4", "f3d4", "d8h4", "d4b5", "f8c5", "d1f3", "g8f6", "b5c7", "e8d8", "c7a8", "h8e8", "f1d3", "f6e4", "e1g1", "e4f2", "f1f2", "e8e1", "d3f1", "c6d4", "f3f7", "d4e2", "g1h1", "e1f1", "f2f1", "e2g3"], "sans": ["e4", "e5", "Nf3", "Nc6", "d4", "exd4", "Nxd4", "Qh4", "Nb5", "Bc5", "Qf3", "Nf6", "Nxc7+", "Kd8", "Nxa8", "Re8", "Bd3", "Nxe4", "O-O", "Nxf2", "Rxf2", "Re1+", "Bf1", "Nd4", "Qxf7", "Ne2+", "Kh1", "Rxf1+", "Rxf1", "Ng3#"], "winner": "b"}, {"id": 31, "op": "Scotch Game", "end": "mate", "moves": ["e2e4", "e7e5", "g1f3", "b8c6", "d2d4", "e5d4", "f3d4", "g8f6", "c1g5", "f8e7", "d4f5", "d7d5", "e4d5", "c6e5", "f5e7", "d8e7", "g5f6", "e5f3"], "sans": ["e4", "e5", "Nf3", "Nc6", "d4", "exd4", "Nxd4", "Nf6", "Bg5", "Be7", "Nf5", "d5", "exd5", "Ne5", "Nxe7", "Qxe7", "Bxf6", "Nf3#"], "winner": "b"}, {"id": 32, "op": "Scotch Game", "end": "mate", "moves": ["e2e4", "e7e5", "g1f3", "b8c6", "d2d4", "e5d4", "f3d4", "g8f6", "b1c3", "f8b4", "d4c6", "b7c6", "f1d3", "e8g8", "e1g1", "d7d5", "e4e5", "f6g4", "f2f4", "d8h4", "h2h3", "b4c5", "g1h1", "h4g3", "h3g4", "g3h4"], "sans": ["e4", "e5", "Nf3", "Nc6", "d4", "exd4", "Nxd4", "Nf6", "Nc3", "Bb4", "Nxc6", "bxc6", "Bd3", "O-O", "O-O", "d5", "e5", "Ng4", "f4", "Qh4", "h3", "Bc5+", "Kh1", "Qg3", "hxg4", "Qh4#"], "winner": "b"}, {"id": 36, "op": "Bishop's Opening", "end": "mate", "moves": ["e2e4", "e7e5", "f1c4", "g8f6", "d2d3", "c7c6", "g1f3", "d7d5", "c4b3", "d5e4", "f3g5", "f8c5", "g5f7", "d8b6", "f7h8", "c5f2", "e1f1", "c8g4", "d1d2", "e4e3", "d2c3", "e3e2"], "sans": ["e4", "e5", "Bc4", "Nf6", "d3", "c6", "Nf3", "d5", "Bb3", "dxe4", "Ng5", "Bc5", "Nxf7", "Qb6", "Nxh8", "Bxf2+", "Kf1", "Bg4", "Qd2", "e3", "Qc3", "e2#"], "winner": "b"}, {"id": 39, "op": "Bishop's Opening", "end": "mate", "moves": ["e2e4", "e7e5", "f1c4", "g8f6", "d2d4", "e5d4", "g1f3", "f6e4", "d1d4", "e4d6", "e1g1", "b8c6", "f1e1", "c6e7", "c4b3", "f7f6", "d4d5", "g7g5", "c1f4", "g5f4", "d5h5", "d6f7", "h5f7"], "sans": ["e4", "e5", "Bc4", "Nf6", "d4", "exd4", "Nf3", "Nxe4", "Qxd4", "Nd6", "O-O", "Nc6", "Re1+", "Ne7", "Bb3", "f6", "Qd5", "g5", "Bf4", "gxf4", "Qh5+", "Nf7", "Qxf7#"], "winner": "w"}, {"id": 42, "op": "Vienna Game", "end": "mate", "moves": ["e2e4", "e7e5", "b1c3", "b8c6", "f2f4", "f8c5", "g1f3", "d7d6", "f4f5", "g8f6", "h2h3", "d6d5", "f3e5", "f6e4", "e5f3", "d8h4", "f3h4", "c5f2", "e1e2", "c6d4", "e2d3", "e4c5"], "sans": ["e4", "e5", "Nc3", "Nc6", "f4", "Bc5", "Nf3", "d6", "f5", "Nf6", "h3", "d5", "Nxe5", "Nxe4", "Nf3", "Qh4+", "Nxh4", "Bf2+", "Ke2", "Nd4+", "Kd3", "Nc5#"], "winner": "b"}, {"id": 43, "op": "Vienna Game", "end": "mate", "moves": ["e2e4", "e7e5", "b1c3", "b8c6", "f2f4", "e5f4", "f1c4", "d8h4", "e1f1", "f8c5", "g2g3", "f4g3", "g1f3", "g3g2", "f1g2", "h4f2", "g2h3", "d7d5"], "sans": ["e4", "e5", "Nc3", "Nc6", "f4", "exf4", "Bc4", "Qh4+", "Kf1", "Bc5", "g3", "fxg3", "Nf3", "g2+", "Kxg2", "Qf2+", "Kh3", "d5#"], "winner": "b"}, {"id": 47, "op": "Vienna Game", "end": "mate", "moves": ["e2e4", "e7e5", "b1c3", "g8f6", "f1c4", "f6e4", "c4f7", "e8f7", "c3e4", "b8c6", "d1f3", "f7g8", "e4g5", "d8g5", "f3d5"], "sans": ["e4", "e5", "Nc3", "Nf6", "Bc4", "Nxe4", "Bxf7+", "Kxf7", "Nxe4", "Nc6", "Qf3+", "Kg8", "Ng5", "Qxg5", "Qd5#"], "winner": "w"}, {"id": 48, "op": "Vienna Game", "end": "mate", "moves": ["e2e4", "e7e5", "b1c3", "g8f6", "f1c4", "f6e4", "d1h5", "e4d6", "c4b3", "f8e7", "d2d3", "e8g8", "g1f3", "b8c6", "f3g5", "h7h6", "h2h4", "d6e8", "g5f7", "f8f7", "h5f7", "g8h7", "f7g8", "h7g6", "h4h5", "g6f5", "g8h7", "f5g4", "h7e4"], "sans": ["e4", "e5", "Nc3", "Nf6", "Bc4", "Nxe4", "Qh5", "Nd6", "Bb3", "Be7", "d3", "O-O", "Nf3", "Nc6", "Ng5", "h6", "h4", "Ne8", "Nxf7", "Rxf7", "Qxf7+", "Kh7", "Qg8+", "Kg6", "h5+", "Kf5", "Qh7+", "Kg4", "Qe4#"], "winner": "w"}, {"id": 49, "op": "Vienna Game", "end": "mate", "moves": ["e2e4", "e7e5", "b1c3", "g8f6", "f1c4", "f6e4", "d1h5", "e4d6", "c4b3", "f8e7", "d2d3", "e8g8", "g1f3", "b8c6", "f3g5", "h7h6", "h2h4", "d6e8", "c3d5", "e8f6", "h5g6", "f7g6", "d5e7", "g8h8", "e7g6"], "sans": ["e4", "e5", "Nc3", "Nf6", "Bc4", "Nxe4", "Qh5", "Nd6", "Bb3", "Be7", "d3", "O-O", "Nf3", "Nc6", "Ng5", "h6", "h4", "Ne8", "Nd5", "Nf6", "Qg6", "fxg6", "Nxe7+", "Kh8", "Nxg6#"], "winner": "w"}, {"id": 50, "op": "Vienna Game", "end": "mate", "moves": ["e2e4", "e7e5", "b1c3", "g8f6", "f2f4", "e5f4", "e4e5", "d8e7", "d1e2", "f6g8", "g1f3", "d7d6", "c3d5", "e7d8", "e5d6", "c8e6", "d5c7", "e8d7", "f3e5", "d7c8", "c7e6", "f7e6", "e2c4", "b8c6", "c4c6", "b7c6", "f1a6", "c8b8", "e5c6"], "sans": ["e4", "e5", "Nc3", "Nf6", "f4", "exf4", "e5", "Qe7", "Qe2", "Ng8", "Nf3", "d6", "Nd5", "Qd8", "exd6+", "Be6", "Nxc7+", "Kd7", "Ne5+", "Kc8", "Nxe6", "fxe6", "Qc4+", "Nc6", "Qxc6+", "bxc6", "Ba6+", "Kb8", "Nxc6#"], "winner": "w"}, {"id": 57, "op": "King's Gambit Accepted", "end": "mate", "moves": ["e2e4", "e7e5", "f2f4", "e5f4", "f1c4", "g7g5", "h2h4", "f7f6", "d1h5", "e8e7", "h5f7", "e7d6", "e4e5", "f6e5", "f7d5", "d6e7", "d5e5"], "sans": ["e4", "e5", "f4", "exf4", "Bc4", "g5", "h4", "f6", "Qh5+", "Ke7", "Qf7+", "Kd6", "e5+", "fxe5", "Qd5+", "Ke7", "Qxe5#"], "winner": "w"}, {"id": 58, "op": "King's Gambit Accepted", "end": "mate", "moves": ["e2e4", "e7e5", "f2f4", "e5f4", "f1c4", "f8c5", "d2d4", "d8h4", "e1f1", "c5b6", "g1f3", "h4d8", "c1f4", "g8e7", "f3g5", "e8g8", "d1h5", "h7h6", "c4f7", "g8h8", "h5h6", "g7h6", "f4e5"], "sans": ["e4", "e5", "f4", "exf4", "Bc4", "Bc5", "d4", "Qh4+", "Kf1", "Bb6", "Nf3", "Qd8", "Bxf4", "Ne7", "Ng5", "O-O", "Qh5", "h6", "Bxf7+", "Kh8", "Qxh6+", "gxh6", "Be5#"], "winner": "w"}, {"id": 59, "op": "King's Gambit Accepted", "end": "mate", "moves": ["e2e4", "e7e5", "f2f4", "e5f4", "g1f3", "f8e7", "f1c4", "g8f6", "b1c3", "f6e4", "c4f7", "e8f7", "f3e5", "f7e6", "d1g4", "e6e5", "d2d4", "e5d4", "c1e3", "d4e3", "g4e2", "e3d4", "e2e4", "d4c5", "e4d5", "c5b6", "d5b5"], "sans": ["e4", "e5", "f4", "exf4", "Nf3", "Be7", "Bc4", "Nf6", "Nc3", "Nxe4", "Bxf7+", "Kxf7", "Ne5+", "Ke6", "Qg4+", "Kxe5", "d4+", "Kxd4", "Be3+", "Kxe3", "Qe2+", "Kd4", "Qxe4+", "Kc5", "Qd5+", "Kb6", "Qb5#"], "winner": "w"}, {"id": 60, "op": "King's Gambit Accepted", "end": "mate", "moves": ["e2e4", "e7e5", "f2f4", "e5f4", "g1f3", "d7d5", "b1c3", "d5e4", "c3e4", "c8g4", "d1e2", "g4f3", "e4f6"], "sans": ["e4", "e5", "f4", "exf4", "Nf3", "d5", "Nc3", "dxe4", "Nxe4", "Bg4", "Qe2", "Bxf3", "Nf6#"], "winner": "w"}, {"id": 62, "op": "King's Gambit Accepted", "end": "mate", "moves": ["e2e4", "e7e5", "f2f4", "e5f4", "g1f3", "g7g5", "f1c4", "f8g7", "d2d4", "g5g4", "c1f4", "g4f3", "e1g1", "f3g2", "c4f7", "e8f7", "d1h5", "f7e7", "f4d6", "e7d6", "h5c5", "d6e6", "d4d5", "e6e5", "d5d6", "e5e4", "b1d2"], "sans": ["e4", "e5", "f4", "exf4", "Nf3", "g5", "Bc4", "Bg7", "d4", "g4", "Bxf4", "gxf3", "O-O", "fxg2", "Bxf7+", "Kxf7", "Qh5+", "Ke7", "Bd6+", "Kxd6", "Qc5+", "Ke6", "d5+", "Ke5", "d6+", "Kxe4", "Nd2#"], "winner": "w"}, {"id": 63, "op": "King's Gambit Accepted", "end": "mate", "moves": ["e2e4", "e7e5", "f2f4", "e5f4", "g1f3", "g7g5", "f1c4", "g5g4", "d2d4", "g4f3", "d1f3", "f8h6", "e1g1", "g8e7", "c1f4", "h6f4", "c4f7", "e8f7", "f3f4", "f7g6", "f4f6", "g6h5", "g2g4", "h5g4", "f1f4", "g4h5", "f4h4"], "sans": ["e4", "e5", "f4", "exf4", "Nf3", "g5", "Bc4", "g4", "d4", "gxf3", "Qxf3", "Bh6", "O-O", "Ne7", "Bxf4", "Bxf4", "Bxf7+", "Kxf7", "Qxf4+", "Kg6", "Qf6+", "Kh5", "g4+", "Kxg4", "Rf4+", "Kh5", "Rh4#"], "winner": "w"}, {"id": 64, "op": "King's Gambit Accepted", "end": "mate", "moves": ["e2e4", "e7e5", "f2f4", "e5f4", "g1f3", "g7g5", "f1c4", "g5g4", "b1c3", "g4f3", "e1g1", "f3g2", "f1f4", "f7f6", "d1h5", "e8e7", "h5f7", "e7d6", "e4e5", "d6e5", "f4e4", "e5d6", "f7d5"], "sans": ["e4", "e5", "f4", "exf4", "Nf3", "g5", "Bc4", "g4", "Nc3", "gxf3", "O-O", "fxg2", "Rxf4", "f6", "Qh5+", "Ke7", "Qf7+", "Kd6", "e5+", "Kxe5", "Re4+", "Kd6", "Qd5#"], "winner": "w"}, {"id": 65, "op": "King's Gambit Accepted", "end": "mate", "moves": ["e2e4", "e7e5", "f2f4", "e5f4", "g1f3", "g7g5", "b1c3", "g5g4", "f3e5", "d8h4", "g2g3", "f4g3", "d1g4", "g3g2", "g4h4", "g2h1q", "c3d5", "b8a6", "d2d4", "f8e7", "h4e7", "g8e7", "d5f6", "e8f8", "c1h6"], "sans": ["e4", "e5", "f4", "exf4", "Nf3", "g5", "Nc3", "g4", "Ne5", "Qh4+", "g3", "fxg3", "Qxg4", "g2+", "Qxh4", "gxh1=Q", "Nd5", "Na6", "d4", "Be7", "Qxe7+", "Nxe7", "Nf6+", "Kf8", "Bh6#"], "winner": "w"}, {"id": 66, "op": "King's Gambit Accepted", "end": "mate", "moves": ["e2e4", "e7e5", "f2f4", "e5f4", "g1f3", "g7g5", "b1c3", "g5g4", "f3e5", "d8h4", "g2g3", "f4g3", "d1g4", "g3g2", "g4h4", "g2h1q", "h4h5", "f8e7", "e5f7", "g8f6", "f7d6", "e8d8", "h5e8", "h8e8", "d6f7"], "sans": ["e4", "e5", "f4", "exf4", "Nf3", "g5", "Nc3", "g4", "Ne5", "Qh4+", "g3", "fxg3", "Qxg4", "g2+", "Qxh4", "gxh1=Q", "Qh5", "Be7", "Nxf7", "Nf6", "Nd6+", "Kd8", "Qe8+", "Rxe8", "Nf7#"], "winner": "w"}, {"id": 70, "op": "King's Gambit Declined", "end": "mate", "moves": ["e2e4", "e7e5", "f2f4", "f8c5", "g1e2", "d8f6", "c2c3", "b8c6", "g2g3", "g8h6", "f1g2", "h6g4", "h1f1", "g4h2", "f4e5", "f6f1", "g2f1", "h2f3"], "sans": ["e4", "e5", "f4", "Bc5", "Ne2", "Qf6", "c3", "Nc6", "g3", "Nh6", "Bg2", "Ng4", "Rf1", "Nxh2", "fxe5", "Qxf1+", "Bxf1", "Nf3#"], "winner": "b"}, {"id": 71, "op": "King's Gambit Declined", "end": "mate", "moves": ["e2e4", "e7e5", "f2f4", "f8c5", "g1f3", "d7d5", "f3e5", "d5e4", "b1c3", "g8f6", "d1e2", "b8c6", "e5f7", "d8e7", "f7h8", "c6d4", "e2d1", "d4f3", "g2f3", "e4f3", "f1e2", "f3f2", "e1f1", "c8h3"], "sans": ["e4", "e5", "f4", "Bc5", "Nf3", "d5", "Nxe5", "dxe4", "Nc3", "Nf6", "Qe2", "Nc6", "Nxf7", "Qe7", "Nxh8", "Nd4", "Qd1", "Nf3+", "gxf3", "exf3+", "Be2", "f2+", "Kf1", "Bh3#"], "winner": "b"}, {"id": 72, "op": "King's Gambit Declined", "end": "mate", "moves": ["e2e4", "e7e5", "f2f4", "d7d6", "g1f3", "c8g4", "f1c4", "f8e7", "e1g1", "b8c6", "c2c3", "c6a5", "f4e5", "d6e5", "c4f7", "e8f7", "f3e5", "f7e6", "d1g4", "e6e5", "g4f5", "e5d6", "f5d5"], "sans": ["e4", "e5", "f4", "d6", "Nf3", "Bg4", "Bc4", "Be7", "O-O", "Nc6", "c3", "Na5", "fxe5", "dxe5", "Bxf7+", "Kxf7", "Nxe5+", "Ke6", "Qxg4+", "Kxe5", "Qf5+", "Kd6", "Qd5#"], "winner": "w"}, {"id": 74, "op": "King's Gambit Declined", "end": "queen", "moves": ["e2e4", "e7e5", "f2f4", "f8c5", "g1f3", "b8c6", "f1c4", "d7d6", "c2c3", "c8g4", "c4f7", "e8f7", "f3g5", "d8g5", "f4g5", "g4d1"], "sans": ["e4", "e5", "f4", "Bc5", "Nf3", "Nc6", "Bc4", "d6", "c3", "Bg4", "Bxf7+", "Kxf7", "Ng5+", "Qxg5", "fxg5", "Bxd1"], "winner": "b"}, {"id": 80, "op": "Falkbeer Counter-Gambit", "end": "mate", "moves": ["e2e4", "e7e5", "f2f4", "d7d5", "e4d5", "e5e4", "f1b5", "c7c6", "d5c6", "b7c6", "b5a4", "d8d4", "c2c3", "d4d6", "g1e2", "c8g4", "e1g1", "d6d3", "f1e1", "f8c5", "g1h1", "g4f3", "a4c2", "f3g2", "h1g2", "d3f3"], "sans": ["e4", "e5", "f4", "d5", "exd5", "e4", "Bb5+", "c6", "dxc6", "bxc6", "Ba4", "Qd4", "c3", "Qd6", "Ne2", "Bg4", "O-O", "Qd3", "Re1", "Bc5+", "Kh1", "Bf3", "Bc2", "Bxg2+", "Kxg2", "Qf3#"], "winner": "b"}, {"id": 98, "op": "Ponziani Opening", "end": "mate", "moves": ["e2e4", "e7e5", "g1f3", "b8c6", "c2c3", "d7d5", "d1a4", "d5e4", "f3e5", "d8d5", "f1b5", "g8e7", "f2f4", "c8d7", "e5d7", "e8d7", "e1g1", "e7f5", "b2b3", "f8c5", "g1h1", "f5g3", "h2g3", "d5h5"], "sans": ["e4", "e5", "Nf3", "Nc6", "c3", "d5", "Qa4", "dxe4", "Nxe5", "Qd5", "Bb5", "Ne7", "f4", "Bd7", "Nxd7", "Kxd7", "O-O", "Nf5", "b3", "Bc5+", "Kh1", "Ng3+", "hxg3", "Qh5#"], "winner": "b"}, {"id": 101, "op": "Ponziani Opening", "end": "mate", "moves": ["e2e4", "e7e5", "g1f3", "b8c6", "c2c3", "g8f6", "d2d4", "f6e4", "d4d5", "c6e7", "f3e5", "e7g6", "f1d3", "e4f2", "d3g6", "f2d1", "g6f7", "e8e7", "c1g5", "e7d6", "e5c4", "d6c5", "b1a3", "d1b2", "g5e3"], "sans": ["e4", "e5", "Nf3", "Nc6", "c3", "Nf6", "d4", "Nxe4", "d5", "Ne7", "Nxe5", "Ng6", "Bd3", "Nxf2", "Bxg6", "Nxd1", "Bxf7+", "Ke7", "Bg5+", "Kd6", "Nc4+", "Kc5", "Nba3", "Nxb2", "Be3#"], "winner": "w"}, {"id": 102, "op": "Philidor Defense", "end": "mate", "moves": ["e2e4", "e7e5", "g1f3", "d7d6", "f1c4", "c8g4", "b1c3", "h7h6", "f3e5", "g4d1", "c4f7", "e8e7", "c3d5"], "sans": ["e4", "e5", "Nf3", "d6", "Bc4", "Bg4", "Nc3", "h6", "Nxe5", "Bxd1", "Bxf7+", "Ke7", "Nd5#"], "winner": "w"}, {"id": 104, "op": "Philidor Defense", "end": "mate", "moves": ["e2e4", "e7e5", "g1f3", "d7d6", "f1c4", "f7f5", "d2d4", "g8f6", "b1c3", "e5d4", "d1d4", "c8d7", "f3g5", "b8c6", "c4f7", "e8e7", "d4f6", "e7f6", "c3d5", "f6e5", "g5f3", "e5e4", "d5c3"], "sans": ["e4", "e5", "Nf3", "d6", "Bc4", "f5", "d4", "Nf6", "Nc3", "exd4", "Qxd4", "Bd7", "Ng5", "Nc6", "Bf7+", "Ke7", "Qxf6+", "Kxf6", "Nd5+", "Ke5", "Nf3+", "Kxe4", "Nc3#"], "winner": "w"}, {"id": 106, "op": "Philidor Defense", "end": "mate", "moves": ["e2e4", "e7e5", "g1f3", "d7d6", "d2d4", "b8d7", "f1c4", "c7c6", "f3g5", "g8h6", "e1g1", "f8e7", "g5e6", "f7e6", "c1h6", "g7h6", "d1h5", "e8f8", "c4e6", "d8e8", "h5h6"], "sans": ["e4", "e5", "Nf3", "d6", "d4", "Nd7", "Bc4", "c6", "Ng5", "Nh6", "O-O", "Be7", "Ne6", "fxe6", "Bxh6", "gxh6", "Qh5+", "Kf8", "Bxe6", "Qe8", "Qxh6#"], "winner": "w"}, {"id": 107, "op": "Philidor Defense", "end": "queen", "moves": ["e2e4", "e7e5", "g1f3", "d7d6", "d2d4", "c8g4", "d4e5", "g4f3", "d1f3", "d6e5", "f1c4", "g8f6", "f3b3", "d8e7", "b3b7", "e7b4", "b7b4", "f8b4"], "sans": ["e4", "e5", "Nf3", "d6", "d4", "Bg4", "dxe5", "Bxf3", "Qxf3", "dxe5", "Bc4", "Nf6", "Qb3", "Qe7", "Qxb7", "Qb4+", "Qxb4", "Bxb4+"], "winner": "b"}, {"id": 110, "op": "Petroff Defense", "end": "queen", "moves": ["e2e4", "e7e5", "g1f3", "g8f6", "f3e5", "b8c6", "e5c6", "d7c6", "e4e5", "f6e4", "d2d3", "f8c5", "d3e4", "c5f2", "e1f2", "d8d1"], "sans": ["e4", "e5", "Nf3", "Nf6", "Nxe5", "Nc6", "Nxc6", "dxc6", "e5", "Ne4", "d3", "Bc5", "dxe4", "Bxf2+", "Kxf2", "Qxd1"], "winner": "b"}, {"id": 112, "op": "Petroff Defense", "end": "mate", "moves": ["e2e4", "e7e5", "g1f3", "g8f6", "f1c4", "f6e4", "b1c3", "e4c3", "d2c3", "d7d6", "e1g1", "c8g4", "f3e5", "g4d1", "c4f7", "e8e7", "c1g5"], "sans": ["e4", "e5", "Nf3", "Nf6", "Bc4", "Nxe4", "Nc3", "Nxc3", "dxc3", "d6", "O-O", "Bg4", "Nxe5", "Bxd1", "Bxf7+", "Ke7", "Bg5#"], "winner": "w"}, {"id": 114, "op": "Three Knights Game", "end": "queen", "moves": ["e2e4", "e7e5", "g1f3", "b8c6", "b1c3", "f8c5", "f3e5", "c6e5", "d2d4", "c5d4", "d1d4", "d8f6", "c3d5", "e5f3", "g2f3", "f6d4"], "sans": ["e4", "e5", "Nf3", "Nc6", "Nc3", "Bc5", "Nxe5", "Nxe5", "d4", "Bxd4", "Qxd4", "Qf6", "Nd5", "Nf3+", "gxf3", "Qxd4"], "winner": "b"}, {"id": 117, "op": "Four Knights Game", "end": "mate", "moves": ["e2e4", "e7e5", "g1f3", "b8c6", "b1c3", "g8f6", "f1c4", "f8b4", "e1g1", "d7d6", "c3d5", "c8g4", "c2c3", "b4c5", "d2d3", "c6e7", "f3e5", "g4d1", "d5f6", "g7f6", "c4f7", "e8f8", "c1h6"], "sans": ["e4", "e5", "Nf3", "Nc6", "Nc3", "Nf6", "Bc4", "Bb4", "O-O", "d6", "Nd5", "Bg4", "c3", "Bc5", "d3", "Ne7", "Nxe5", "Bxd1", "Nxf6+", "gxf6", "Bxf7+", "Kf8", "Bh6#"], "winner": "w"}, {"id": 118, "op": "Four Knights Game", "end": "mate", "moves": ["e2e4", "e7e5", "g1f3", "b8c6", "b1c3", "g8f6", "f1b5", "f8b4", "e1g1", "c6d4", "f3d4", "e5d4", "e4e5", "d4c3", "d2c3", "b4e7", "e5f6", "e7f6", "f1e1", "f6e7", "c1g5", "f7f6", "g5f6", "g7f6", "d1h5", "e8f8", "b5c4", "d8e8", "h5h6"], "sans": ["e4", "e5", "Nf3", "Nc6", "Nc3", "Nf6", "Bb5", "Bb4", "O-O", "Nd4", "Nxd4", "exd4", "e5", "dxc3", "dxc3", "Be7", "exf6", "Bxf6", "Re1+", "Be7", "Bg5", "f6", "Bxf6", "gxf6", "Qh5+", "Kf8", "Bc4", "Qe8", "Qh6#"], "winner": "w"}, {"id": 122, "op": "Hungarian Defense", "end": "mate", "moves": ["e2e4", "e7e5", "g1f3", "b8c6", "f1c4", "f8e7", "d2d4", "e5d4", "c2c3", "d4c3", "d1d5", "d7d6", "d5f7", "e8d7", "c4e6"], "sans": ["e4", "e5", "Nf3", "Nc6", "Bc4", "Be7", "d4", "exd4", "c3", "dxc3", "Qd5", "d6", "Qxf7+", "Kd7", "Be6#"], "winner": "w"}, {"id": 123, "op": "Hungarian Defense", "end": "mate", "moves": ["e2e4", "e7e5", "g1f3", "b8c6", "f1c4", "f8e7", "b1c3", "g8f6", "d2d4", "e5d4", "f3d4", "d7d6", "e1g1", "e8g8", "h2h3", "f8e8", "f1e1", "f6d7", "c4f7", "g8f7", "d4e6", "f7e6", "d1d5", "e6f6", "d5f5"], "sans": ["e4", "e5", "Nf3", "Nc6", "Bc4", "Be7", "Nc3", "Nf6", "d4", "exd4", "Nxd4", "d6", "O-O", "O-O", "h3", "Re8", "Re1", "Nd7", "Bxf7+", "Kxf7", "Ne6", "Kxe6", "Qd5+", "Kf6", "Qf5#"], "winner": "w"}, {"id": 124, "op": "Paris Defense", "end": "mate", "moves": ["e2e4", "e7e5", "g1f3", "b8c6", "f1c4", "d7d6", "e1g1", "g8e7", "f3g5", "f7f6", "c4f7", "e8d7", "d1g4", "f6f5", "e4f5", "h7h5", "f5f6", "h5g4", "f7e6", "d7e8", "f6f7"], "sans": ["e4", "e5", "Nf3", "Nc6", "Bc4", "d6", "O-O", "Nge7", "Ng5", "f6", "Bf7+", "Kd7", "Qg4+", "f5", "exf5", "h5", "f6+", "hxg4", "Be6+", "Ke8", "f7#"], "winner": "w"}, {"id": 129, "op": "Giuoco Piano", "end": "mate", "moves": ["e2e4", "e7e5", "g1f3", "b8c6", "f1c4", "f8c5", "b1c3", "g8f6", "d2d3", "e8g8", "c1g5", "h7h6", "h2h4", "h6g5", "h4g5", "f6g4", "g5g6", "g4f2", "f3e5", "f2d1", "g6f7", "f8f7", "c4f7", "g8f8", "h1h8", "f8e7", "c3d5", "e7d6", "e5c4"], "sans": ["e4", "e5", "Nf3", "Nc6", "Bc4", "Bc5", "Nc3", "Nf6", "d3", "O-O", "Bg5", "h6", "h4", "hxg5", "hxg5", "Ng4", "g6", "Nxf2", "Nxe5", "Nxd1", "gxf7+", "Rxf7", "Bxf7+", "Kf8", "Rh8+", "Ke7", "Nd5+", "Kd6", "Nc4#"], "winner": "w"}, {"id": 131, "op": "Giuoco Piano", "end": "mate", "moves": ["e2e4", "e7e5", "g1f3", "b8c6", "f1c4", "f8c5", "b1c3", "g8f6", "d2d3", "d7d6", "e1g1", "c8g4", "h2h3", "h7h5", "h3g4", "h5g4", "f3g5", "g4g3", "g5f7", "f6e4", "f7d8", "g3f2", "f1f2", "c5f2", "g1f1", "h8h1", "f1e2", "c6d4"], "sans": ["e4", "e5", "Nf3", "Nc6", "Bc4", "Bc5", "Nc3", "Nf6", "d3", "d6", "O-O", "Bg4", "h3", "h5", "hxg4", "hxg4", "Ng5", "g3", "Nxf7", "Nxe4", "Nxd8", "gxf2+", "Rxf2", "Bxf2+", "Kf1", "Rh1+", "Ke2", "Nd4#"], "winner": "b"}, {"id": 132, "op": "Giuoco Piano", "end": "mate", "moves": ["e2e4", "e7e5", "g1f3", "b8c6", "f1c4", "f8c5", "b1c3", "g8f6", "d2d3", "d7d6", "c1g5", "e8g8", "c3d5", "g8h8", "g5f6", "g7f6", "d1d2", "f6f5", "d2h6", "f7f6", "f3h4", "f8f7", "h4g6", "h8g8", "d5f6", "d8f6", "h6f8"], "sans": ["e4", "e5", "Nf3", "Nc6", "Bc4", "Bc5", "Nc3", "Nf6", "d3", "d6", "Bg5", "O-O", "Nd5", "Kh8", "Bxf6", "gxf6", "Qd2", "f5", "Qh6", "f6", "Nh4", "Rf7", "Ng6+", "Kg8", "Nxf6+", "Qxf6", "Qf8#"], "winner": "w"}, {"id": 133, "op": "Giuoco Piano", "end": "queen", "moves": ["e2e4", "e7e5", "g1f3", "b8c6", "f1c4", "f8c5", "c2c3", "d7d6", "d2d4", "c5b6", "d4e5", "c6e5", "f3e5", "d6e5", "c4f7", "e8e7", "d1d8", "e7d8"], "sans": ["e4", "e5", "Nf3", "Nc6", "Bc4", "Bc5", "c3", "d6", "d4", "Bb6", "dxe5", "Nxe5", "Nxe5", "dxe5", "Bxf7+", "Ke7", "Qxd8+", "Kxd8"], "winner": "b"}, {"id": 136, "op": "Giuoco Piano", "end": "mate", "moves": ["e2e4", "e7e5", "g1f3", "b8c6", "f1c4", "f8c5", "c2c3", "g8f6", "d2d4", "e5d4", "c3d4", "c5b6", "f3g5", "e8g8", "e4e5", "f6e8", "d1h5", "h7h6", "g5f7", "d8e7", "f7h6", "g8h8", "h6f7", "h8g8", "h5h8"], "sans": ["e4", "e5", "Nf3", "Nc6", "Bc4", "Bc5", "c3", "Nf6", "d4", "exd4", "cxd4", "Bb6", "Ng5", "O-O", "e5", "Ne8", "Qh5", "h6", "Nxf7", "Qe7", "Nxh6+", "Kh8", "Nf7+", "Kg8", "Qh8#"], "winner": "w"}, {"id": 137, "op": "Giuoco Piano", "end": "mate", "moves": ["e2e4", "e7e5", "g1f3", "b8c6", "f1c4", "f8c5", "c2c3", "g8f6", "d2d4", "e5d4", "c3d4", "c5b6", "e4e5", "f6g4", "h2h3", "g4h6", "d4d5", "c6e7", "d5d6", "e7g6", "c1g5", "f7f6", "e5f6", "g7f6", "d1e2", "e8f8", "g5h6"], "sans": ["e4", "e5", "Nf3", "Nc6", "Bc4", "Bc5", "c3", "Nf6", "d4", "exd4", "cxd4", "Bb6", "e5", "Ng4", "h3", "Nh6", "d5", "Ne7", "d6", "Ng6", "Bg5", "f6", "exf6", "gxf6", "Qe2+", "Kf8", "Bxh6#"], "winner": "w"}, {"id": 138, "op": "Giuoco Piano", "end": "mate", "moves": ["e2e4", "e7e5", "g1f3", "b8c6", "f1c4", "f8c5", "c4f7", "e8f7", "f3e5", "c6e5", "d1h5", "g7g6", "h5e5", "d7d6", "e5h8", "d8h4", "d2d4", "g8f6", "d4c5", "h4e4", "c1e3", "e4g2", "h1f1", "c8h3", "h8a8", "g2f1", "e1d2", "f6e4"], "sans": ["e4", "e5", "Nf3", "Nc6", "Bc4", "Bc5", "Bxf7+", "Kxf7", "Nxe5+", "Nxe5", "Qh5+", "g6", "Qxe5", "d6", "Qxh8", "Qh4", "d4", "Nf6", "dxc5", "Qxe4+", "Be3", "Qxg2", "Rf1", "Bh3", "Qxa8", "Qxf1+", "Kd2", "Ne4#"], "winner": "b"}, {"id": 139, "op": "Evans Gambit", "end": "mate", "moves": ["e2e4", "e7e5", "g1f3", "b8c6", "f1c4", "f8c5", "b2b4", "c5b4", "c2c3", "b4c5", "e1g1", "d7d6", "c1b2", "c8g4", "h2h3", "h7h5", "h3g4", "h5g4", "f3h2", "d8h4", "f1e1", "h4f2", "g1h1", "h8h2", "h1h2", "f2h4"], "sans": ["e4", "e5", "Nf3", "Nc6", "Bc4", "Bc5", "b4", "Bxb4", "c3", "Bc5", "O-O", "d6", "Bb2", "Bg4", "h3", "h5", "hxg4", "hxg4", "Nh2", "Qh4", "Re1", "Qxf2+", "Kh1", "Rxh2+", "Kxh2", "Qh4#"], "winner": "b"}, {"id": 142, "op": "Evans Gambit Declined", "end": "mate", "moves": ["e2e4", "e7e5", "g1f3", "b8c6", "f1c4", "f8c5", "b2b4", "c5b6", "a2a4", "a7a6", "a4a5", "b6a7", "b4b5", "a6b5", "c4b5", "g8f6", "c1a3", "f6e4", "d1e2", "e4f2", "f3e5", "c6d4", "e5d7", "d4e2", "d7f6"], "sans": ["e4", "e5", "Nf3", "Nc6", "Bc4", "Bc5", "b4", "Bb6", "a4", "a6", "a5", "Ba7", "b5", "axb5", "Bxb5", "Nf6", "Ba3", "Nxe4", "Qe2", "Nxf2", "Nxe5", "Nd4", "Nxd7+", "Nxe2", "Nf6#"], "winner": "w"}, {"id": 143, "op": "Two Knights Defense", "end": "mate", "moves": ["e2e4", "e7e5", "g1f3", "b8c6", "f1c4", "g8f6", "e1g1", "f6e4", "f1e1", "d7d5", "c4b3", "f8c5", "d2d4", "c6d4", "f3e5", "d8f6", "b3d5", "f6f2", "g1h1", "f2g1", "h1g1", "d4e2", "g1f1", "e2g3", "h2g3", "e4g3"], "sans": ["e4", "e5", "Nf3", "Nc6", "Bc4", "Nf6", "O-O", "Nxe4", "Re1", "d5", "Bb3", "Bc5", "d4", "Nxd4", "Nxe5", "Qf6", "Bxd5", "Qxf2+", "Kh1", "Qg1+", "Kxg1", "Ne2+", "Kf1", "N2g3+", "hxg3", "Nxg3#"], "winner": "b"}, {"id": 148, "op": "Two Knights Defense (Wilkes-Barre)", "end": "mate", "moves": ["e2e4", "e7e5", "g1f3", "b8c6", "f1c4", "g8f6", "f3g5", "f8c5", "g5f7", "c5f2", "e1f2", "f6e4", "f2g1", "d8h4", "g2g3", "e4g3", "f7h8", "g3h1", "d1f1", "d7d6", "f1f7", "e8d8", "f7f8", "d8d7", "c4e6", "d7e6", "f8f7"], "sans": ["e4", "e5", "Nf3", "Nc6", "Bc4", "Nf6", "Ng5", "Bc5", "Nxf7", "Bxf2+", "Kxf2", "Nxe4+", "Kg1", "Qh4", "g3", "Nxg3", "Nxh8", "Nxh1", "Qf1", "d6", "Qf7+", "Kd8", "Qf8+", "Kd7", "Be6+", "Kxe6", "Qf7#"], "winner": "w"}, {"id": 152, "op": "Ruy Lopez", "end": "mate", "moves": ["e2e4", "e7e5", "g1f3", "b8c6", "f1b5", "d7d6", "d2d4", "c8d7", "b1c3", "g8e7", "b5c4", "e5d4", "f3d4", "g7g6", "c1g5", "f8g7", "c3d5", "g7d4", "d1d4", "c6d4", "d5f6", "e8f8", "g5h6"], "sans": ["e4", "e5", "Nf3", "Nc6", "Bb5", "d6", "d4", "Bd7", "Nc3", "Nge7", "Bc4", "exd4", "Nxd4", "g6", "Bg5", "Bg7", "Nd5", "Bxd4", "Qxd4", "Nxd4", "Nf6+", "Kf8", "Bh6#"], "winner": "w"}, {"id": 153, "op": "Ruy Lopez", "end": "mate", "moves": ["e2e4", "e7e5", "g1f3", "b8c6", "f1b5", "d7d6", "b5c6", "b7c6", "d2d4", "c8g4", "d4e5", "d6e5", "d1d8", "a8d8", "f3e5", "d8d1"], "sans": ["e4", "e5", "Nf3", "Nc6", "Bb5", "d6", "Bxc6+", "bxc6", "d4", "Bg4", "dxe5", "dxe5", "Qxd8+", "Rxd8", "Nxe5", "Rd1#"], "winner": "b"}, {"id": 154, "op": "Ruy Lopez", "end": "mate", "moves": ["e2e4", "e7e5", "g1f3", "b8c6", "f1b5", "d7d6", "d2d3", "c8d7", "b1c3", "f7f6", "h2h3", "a7a6", "b5c4", "g8h6", "c1h6", "g7h6", "f3g5", "h6g5", "d1h5", "e8e7", "h5f7"], "sans": ["e4", "e5", "Nf3", "Nc6", "Bb5", "d6", "d3", "Bd7", "Nc3", "f6", "h3", "a6", "Bc4", "Nh6", "Bxh6", "gxh6", "Ng5", "hxg5", "Qh5+", "Ke7", "Qf7#"], "winner": "w"}, {"id": 161, "op": "Ruy Lopez", "end": "mate", "moves": ["e2e4", "e7e5", "g1f3", "b8c6", "f1b5", "g8f6", "e1g1", "f6e4", "d2d4", "e5d4", "f1e1", "d7d5", "d1d4", "a7a6", "b5c6", "b7c6", "f3g5", "d8f6", "g5e4", "f6d4", "e4f6", "e8d8", "e1e8"], "sans": ["e4", "e5", "Nf3", "Nc6", "Bb5", "Nf6", "O-O", "Nxe4", "d4", "exd4", "Re1", "d5", "Qxd4", "a6", "Bxc6+", "bxc6", "Ng5", "Qf6", "Nxe4", "Qxd4", "Nf6+", "Kd8", "Re8#"], "winner": "w"}, {"id": 163, "op": "Ruy Lopez", "end": "queen", "moves": ["e2e4", "e7e5", "g1f3", "b8c6", "f1b5", "g8f6", "e1g1", "f6e4", "f1e1", "e4d6", "b1c3", "d6b5", "f3e5", "b5c3", "e5c6", "f8e7", "c6e7", "c3d1", "e7g6", "d8e7", "g6e7"], "sans": ["e4", "e5", "Nf3", "Nc6", "Bb5", "Nf6", "O-O", "Nxe4", "Re1", "Nd6", "Nc3", "Nxb5", "Nxe5", "Nxc3", "Nxc6+", "Be7", "Nxe7", "Nxd1", "Ng6+", "Qe7", "Nxe7"], "winner": "w"}, {"id": 169, "op": "Ruy Lopez", "end": "mate", "moves": ["e2e4", "e7e5", "g1f3", "b8c6", "f1b5", "g8f6", "e1g1", "f8c5", "f1e1", "f6g4", "d2d4", "e5d4", "f3d4", "d8h4", "d4f3", "h4f2", "g1h1", "f2g1", "e1g1", "g4f2"], "sans": ["e4", "e5", "Nf3", "Nc6", "Bb5", "Nf6", "O-O", "Bc5", "Re1", "Ng4", "d4", "exd4", "Nxd4", "Qh4", "Nf3", "Qxf2+", "Kh1", "Qg1+", "Rxg1", "Nf2#"], "winner": "b"}, {"id": 178, "op": "Ruy Lopez", "end": "mate", "moves": ["e2e4", "e7e5", "g1f3", "b8c6", "f1b5", "g8e7", "e1g1", "f7f6", "f3h4", "a7a6", "b5c6", "e7c6", "d1h5", "g7g6", "h4g6", "h8g8", "g6e5", "e8e7", "h5f7", "e7d6", "e5c4", "d6c5", "f7d5", "c5b4", "c2c3", "b4a4", "b2b3"], "sans": ["e4", "e5", "Nf3", "Nc6", "Bb5", "Nge7", "O-O", "f6", "Nh4", "a6", "Bxc6", "Nxc6", "Qh5+", "g6", "Nxg6", "Rg8", "Nxe5+", "Ke7", "Qf7+", "Kd6", "Nc4+", "Kc5", "Qd5+", "Kb4", "c3+", "Ka4", "b3#"], "winner": "w"}, {"id": 179, "op": "Ruy Lopez", "end": "mate", "moves": ["e2e4", "e7e5", "g1f3", "b8c6", "f1b5", "g8e7", "c2c3", "d7d6", "d2d4", "c8d7", "e1g1", "e7g6", "f3g5", "h7h6", "g5f7", "e8f7", "b5c4", "f7e7", "d1h5", "d8e8", "h5g5", "h6g5", "c1g5"], "sans": ["e4", "e5", "Nf3", "Nc6", "Bb5", "Nge7", "c3", "d6", "d4", "Bd7", "O-O", "Ng6", "Ng5", "h6", "Nxf7", "Kxf7", "Bc4+", "Ke7", "Qh5", "Qe8", "Qg5+", "hxg5", "Bxg5#"], "winner": "w"}, {"id": 180, "op": "Ruy Lopez", "end": "mate", "moves": ["e2e4", "e7e5", "g1f3", "b8c6", "f1b5", "g8e7", "b1c3", "a7a6", "b5a4", "b7b5", "a4b3", "h7h6", "d2d4", "d7d6", "a2a4", "b5b4", "c3d5", "c8g4", "d4e5", "c6e5", "f3e5", "g4d1", "d5f6", "g7f6", "b3f7"], "sans": ["e4", "e5", "Nf3", "Nc6", "Bb5", "Nge7", "Nc3", "a6", "Ba4", "b5", "Bb3", "h6", "d4", "d6", "a4", "b4", "Nd5", "Bg4", "dxe5", "Nxe5", "Nxe5", "Bxd1", "Nf6+", "gxf6", "Bxf7#"], "winner": "w"}, {"id": 181, "op": "Ruy Lopez", "end": "queen", "moves": ["e2e4", "e7e5", "g1f3", "b8c6", "f1b5", "g8e7", "d2d4", "e5d4", "f3d4", "c6d4", "d1d4", "c7c6", "b5c4", "d7d5", "c4b3", "d5e4", "b3f7", "e8f7", "d4d8"], "sans": ["e4", "e5", "Nf3", "Nc6", "Bb5", "Nge7", "d4", "exd4", "Nxd4", "Nxd4", "Qxd4", "c6", "Bc4", "d5", "Bb3", "dxe4", "Bxf7+", "Kxf7", "Qxd8"], "winner": "w"}];
+let openIdx=0, openStep=0, openTimer=null, openBuilt=false;
+const openBoardEl=document.getElementById("openBoard");
+
+function openingsStop(){
+  if(openTimer){ clearInterval(openTimer); openTimer=null; }
+  const b=document.getElementById("openAuto");
+  if(b) b.textContent="▶ Redă tot";
+}
+function openingsRender(){
+  const e=OPENINGS_DATA[openIdx];
+  const g=new Chess();
+  let last=null;
+  for(let i=0;i<openStep;i++){
+    const u=e.moves[i];
+    last=g.move({from:u.slice(0,2), to:u.slice(2,4), promotion:u.length>4?u[4]:undefined});
+  }
+  paintPieces(openBoardEl,g.board());
+  openBoardEl.querySelectorAll(".sq").forEach(el=>el.classList.remove("lastmove","king-check","king-mate"));
+  if(last){
+    openBoardEl.querySelector('.sq[data-sq="'+last.from+'"]').classList.add("lastmove");
+    openBoardEl.querySelector('.sq[data-sq="'+last.to+'"]').classList.add("lastmove");
+  }
+  if(g.in_check()){
+    const k=findKingSquare(g,g.turn());
+    const el=k&&openBoardEl.querySelector('.sq[data-sq="'+k+'"]');
+    if(el) el.classList.add(g.in_checkmate()?"king-mate":"king-check");
+  }
+  const total=e.moves.length;
+  document.getElementById("openStepLabel").textContent=openStep+" / "+total;
+  document.getElementById("openTurnLabel").innerHTML="La mutare: <b>"+(g.turn()==="w"?"Alb":"Negru")+"</b>";
+  const res=document.getElementById("openResult");
+  if(openStep===total){
+    res.textContent=(e.end==="mate"?"Șah mat":"Dama adversă a fost capturată")+" — câștigă "+(e.winner==="w"?"Albul":"Negrul");
+  } else res.textContent="";
+  const list=document.getElementById("openMoves");
+  let html="";
+  e.sans.forEach((s,i)=>{
+    if(i%2===0) html+='<span class="om-num">'+(i/2+1)+'.</span>';
+    html+='<button type="button" class="om-move'+(i===openStep-1?' active':'')+'" data-i="'+(i+1)+'">'+s+'</button>';
+  });
+  list.innerHTML=html;
+  const act=list.querySelector(".om-move.active");
+  if(act) act.scrollIntoView({block:"nearest"});
+}
+function openingsSetStep(s){
+  openStep=Math.max(0,Math.min(s,OPENINGS_DATA[openIdx].moves.length));
+  openingsRender();
+}
+function openingsSet(i,s){
+  openingsStop();
+  openIdx=i;
+  const sel=document.getElementById("openingSelect");
+  if(sel) sel.value=String(i);
+  openingsSetStep(s);
+}
+function openingsAuto(){
+  if(openTimer){ openingsStop(); return; }
+  if(openStep>=OPENINGS_DATA[openIdx].moves.length) openingsSetStep(0);
+  document.getElementById("openAuto").textContent="⏸ Pauză";
+  openTimer=setInterval(()=>{
+    if(openStep>=OPENINGS_DATA[openIdx].moves.length){ openingsStop(); return; }
+    openingsSetStep(openStep+1);
+  },900);
+}
+function openingsEnter(){
+  if(!openBuilt){
+    buildBoardDom(openBoardEl);
+    const sel=document.getElementById("openingSelect");
+    sel.innerHTML=OPENINGS_DATA.map((e,i)=>'<option value="'+i+'">'+e.op+' · '+(e.end==="mate"?"mat":"dama capturată")+' ('+Math.ceil(e.moves.length/2)+' mutări)</option>').join("");
+    sel.addEventListener("change",()=>openingsSet(Number(sel.value),0));
+    document.getElementById("openFirst").addEventListener("click",()=>openingsSetStep(0));
+    document.getElementById("openPrev").addEventListener("click",()=>{ openingsStop(); openingsSetStep(openStep-1); });
+    document.getElementById("openNext").addEventListener("click",()=>{ openingsStop(); openingsSetStep(openStep+1); });
+    document.getElementById("openLast").addEventListener("click",()=>{ openingsStop(); openingsSetStep(OPENINGS_DATA[openIdx].moves.length); });
+    document.getElementById("openAuto").addEventListener("click",openingsAuto);
+    document.getElementById("openMoves").addEventListener("click",(ev)=>{
+      const b=ev.target.closest(".om-move");
+      if(b){ openingsStop(); openingsSetStep(Number(b.dataset.i)); }
+    });
+    openBuilt=true;
+  }
+  openingsSet(openIdx,openStep);
+}
+
 function ensureGameStarted(){
   syncGameLevelUI();
   if(!game){ startNewGame(humanColor); }
@@ -5225,77 +5350,77 @@ const LANGUAGES=[
 const I18N={
 ro:{appTitle:"Principii de Șah",appSubtitle:"35 de reguli clasice, explicate și exersate ca puzzle-uri",
 saveBtn:"💾 Salvează progresul",saveStatus:"Progresul se ține minte automat în acest browser; apasă „Salvează” ca să-l păstrezi și dacă schimbi browserul sau dispozitivul.",
-tabBase:"Principii de bază",tabAdvanced:"Principii avansate",tabTactics:"Tactică și strategie",tabEndgames:"Motive și finaluri",tabDefense:"Defensivă",tabCaptures:"Tactici de capturare",tabTraps:"Capcane din deschideri",tabLive:"Joc live vs. calculator",
+tabBase:"Principii de bază",tabAdvanced:"Principii avansate",tabTactics:"Tactică și strategie",tabEndgames:"Motive și finaluri",tabDefense:"Defensivă",tabCaptures:"Tactici de capturare",tabTraps:"Capcane din deschideri",tabOpenings:"Deschideri",tabLive:"Joc live vs. calculator",
 diffBeginner:"Începător",diffAdvanced:"Avansat",levelLabel:"Nivel de dificultate:",
 retryBtn:"↺ Încearcă din nou",nextBtn:"Următorul principiu →",puzzleHint:"? Indiciu",
 settingsLabel:"Setări",settingsTitle:"Setări",themeLabel:"Temă",langLabel:"Limbă",closeBtn:"Închide",volumeLabel:"Volum",colorPickTitle:"Cu ce culoare joci?",colorPickWhite:"Alb",colorPickBlack:"Negru",eloHistoryBtn:"📊 Istoric",eloHistoryTitle:"Istoric partide",eloResetBtn:"Resetează istoricul",techniqueFilterLabel:"Tehnică:",
 gameNewBtn:"♟ Joc nou",gameUndoBtn:"↺ Anulează",gameHintBtn:"? Indiciu",gameLevelLabel:"Dificultate calculator: nivel",playingWhite:"Joci cu Albul"},
 en:{appTitle:"Chess Principles",appSubtitle:"35 classic rules, explained and practiced as puzzles",
 saveBtn:"💾 Save progress",saveStatus:"Your progress is remembered automatically in this browser; click “Save” to keep it if you switch browsers or devices.",
-tabBase:"Basic Principles",tabAdvanced:"Advanced Principles",tabTactics:"Tactics & Strategy",tabEndgames:"Motifs & Endgames",tabDefense:"Defense",tabCaptures:"Capture Tactics",tabTraps:"Opening Traps",tabLive:"Live Game vs. Computer",
+tabBase:"Basic Principles",tabAdvanced:"Advanced Principles",tabTactics:"Tactics & Strategy",tabEndgames:"Motifs & Endgames",tabDefense:"Defense",tabCaptures:"Capture Tactics",tabTraps:"Opening Traps",tabOpenings:"Openings",tabLive:"Live Game vs. Computer",
 diffBeginner:"Beginner",diffAdvanced:"Advanced",levelLabel:"Difficulty level:",
 retryBtn:"↺ Try again",nextBtn:"Next principle →",puzzleHint:"? Hint",
 settingsLabel:"Settings",settingsTitle:"Settings",themeLabel:"Theme",langLabel:"Language",closeBtn:"Close",volumeLabel:"Volume",colorPickTitle:"Which color do you play?",colorPickWhite:"White",colorPickBlack:"Black",eloHistoryBtn:"📊 History",eloHistoryTitle:"Game history",eloResetBtn:"Reset history",techniqueFilterLabel:"Technique:",
 gameNewBtn:"♟ New game",gameUndoBtn:"↺ Undo",gameHintBtn:"? Hint",gameLevelLabel:"Computer difficulty: level",playingWhite:"You're playing White"},
 es:{appTitle:"Principios de Ajedrez",appSubtitle:"35 reglas clásicas, explicadas y practicadas como puzzles",
 saveBtn:"💾 Guardar progreso",saveStatus:"Tu progreso se guarda automáticamente en este navegador; pulsa «Guardar» para conservarlo si cambias de navegador o dispositivo.",
-tabBase:"Principios básicos",tabAdvanced:"Principios avanzados",tabTactics:"Táctica y estrategia",tabEndgames:"Motivos y finales",tabDefense:"Defensa",tabCaptures:"Tácticas de captura",tabTraps:"Trampas de aperturas",tabLive:"Partida en vivo vs. ordenador",
+tabBase:"Principios básicos",tabAdvanced:"Principios avanzados",tabTactics:"Táctica y estrategia",tabEndgames:"Motivos y finales",tabDefense:"Defensa",tabCaptures:"Tácticas de captura",tabTraps:"Trampas de aperturas",tabOpenings:"Aperturas",tabLive:"Partida en vivo vs. ordenador",
 diffBeginner:"Principiante",diffAdvanced:"Avanzado",levelLabel:"Nivel de dificultad:",
 retryBtn:"↺ Inténtalo de nuevo",nextBtn:"Siguiente principio →",puzzleHint:"? Pista",
 settingsLabel:"Ajustes",settingsTitle:"Ajustes",themeLabel:"Tema",langLabel:"Idioma",closeBtn:"Cerrar",volumeLabel:"Volumen",colorPickTitle:"¿Con qué color juegas?",colorPickWhite:"Blancas",colorPickBlack:"Negras",eloHistoryBtn:"📊 Historial",eloHistoryTitle:"Historial de partidas",eloResetBtn:"Restablecer historial",techniqueFilterLabel:"Técnica:",
 gameNewBtn:"♟ Partida nueva",gameUndoBtn:"↺ Deshacer",gameHintBtn:"? Pista",gameLevelLabel:"Dificultad del ordenador: nivel",playingWhite:"Juegas con Blancas"},
 fr:{appTitle:"Principes des Échecs",appSubtitle:"35 règles classiques, expliquées et pratiquées sous forme de puzzles",
 saveBtn:"💾 Enregistrer la progression",saveStatus:"Votre progression est mémorisée automatiquement dans ce navigateur ; cliquez sur « Enregistrer » pour la conserver si vous changez de navigateur ou d'appareil.",
-tabBase:"Principes de base",tabAdvanced:"Principes avancés",tabTactics:"Tactique et stratégie",tabEndgames:"Motifs et finales",tabDefense:"Défense",tabCaptures:"Tactiques de capture",tabTraps:"Pièges d'ouverture",tabLive:"Partie en direct vs. ordinateur",
+tabBase:"Principes de base",tabAdvanced:"Principes avancés",tabTactics:"Tactique et stratégie",tabEndgames:"Motifs et finales",tabDefense:"Défense",tabCaptures:"Tactiques de capture",tabTraps:"Pièges d'ouverture",tabOpenings:"Ouvertures",tabLive:"Partie en direct vs. ordinateur",
 diffBeginner:"Débutant",diffAdvanced:"Avancé",levelLabel:"Niveau de difficulté :",
 retryBtn:"↺ Réessayer",nextBtn:"Principe suivant →",puzzleHint:"? Indice",
 settingsLabel:"Paramètres",settingsTitle:"Paramètres",themeLabel:"Thème",langLabel:"Langue",closeBtn:"Fermer",volumeLabel:"Volume",colorPickTitle:"Avec quelle couleur joues-tu ?",colorPickWhite:"Blancs",colorPickBlack:"Noirs",eloHistoryBtn:"📊 Historique",eloHistoryTitle:"Historique des parties",eloResetBtn:"Réinitialiser l'historique",techniqueFilterLabel:"Technique :",
 gameNewBtn:"♟ Nouvelle partie",gameUndoBtn:"↺ Annuler",gameHintBtn:"? Indice",gameLevelLabel:"Difficulté de l'ordinateur : niveau",playingWhite:"Vous jouez les Blancs"},
 de:{appTitle:"Schachprinzipien",appSubtitle:"35 klassische Regeln, erklärt und als Rätsel geübt",
 saveBtn:"💾 Fortschritt speichern",saveStatus:"Dein Fortschritt wird in diesem Browser automatisch gespeichert; klicke auf „Speichern“, um ihn bei einem Browser- oder Gerätewechsel zu behalten.",
-tabBase:"Grundprinzipien",tabAdvanced:"Fortgeschrittene Prinzipien",tabTactics:"Taktik und Strategie",tabEndgames:"Motive und Endspiele",tabDefense:"Verteidigung",tabCaptures:"Schlagtaktiken",tabTraps:"Eröffnungsfallen",tabLive:"Live-Partie gegen Computer",
+tabBase:"Grundprinzipien",tabAdvanced:"Fortgeschrittene Prinzipien",tabTactics:"Taktik und Strategie",tabEndgames:"Motive und Endspiele",tabDefense:"Verteidigung",tabCaptures:"Schlagtaktiken",tabTraps:"Eröffnungsfallen",tabOpenings:"Eröffnungen",tabLive:"Live-Partie gegen Computer",
 diffBeginner:"Anfänger",diffAdvanced:"Fortgeschritten",levelLabel:"Schwierigkeitsgrad:",
 retryBtn:"↺ Erneut versuchen",nextBtn:"Nächstes Prinzip →",puzzleHint:"? Hinweis",
 settingsLabel:"Einstellungen",settingsTitle:"Einstellungen",themeLabel:"Design",langLabel:"Sprache",closeBtn:"Schließen",volumeLabel:"Lautstärke",colorPickTitle:"Mit welcher Farbe spielst du?",colorPickWhite:"Weiß",colorPickBlack:"Schwarz",eloHistoryBtn:"📊 Verlauf",eloHistoryTitle:"Partienverlauf",eloResetBtn:"Verlauf zurücksetzen",techniqueFilterLabel:"Technik:",
 gameNewBtn:"♟ Neues Spiel",gameUndoBtn:"↺ Zurück",gameHintBtn:"? Hinweis",gameLevelLabel:"Computerschwierigkeit: Stufe",playingWhite:"Du spielst Weiß"},
 it:{appTitle:"Principi degli Scacchi",appSubtitle:"35 regole classiche, spiegate ed esercitate come puzzle",
 saveBtn:"💾 Salva progressi",saveStatus:"I tuoi progressi vengono salvati automaticamente in questo browser; premi «Salva» per conservarli se cambi browser o dispositivo.",
-tabBase:"Principi di base",tabAdvanced:"Principi avanzati",tabTactics:"Tattica e strategia",tabEndgames:"Motivi e finali",tabDefense:"Difesa",tabCaptures:"Tattiche di cattura",tabTraps:"Trappole di apertura",tabLive:"Partita dal vivo vs. computer",
+tabBase:"Principi di base",tabAdvanced:"Principi avanzati",tabTactics:"Tattica e strategia",tabEndgames:"Motivi e finali",tabDefense:"Difesa",tabCaptures:"Tattiche di cattura",tabTraps:"Trappole di apertura",tabOpenings:"Aperture",tabLive:"Partita dal vivo vs. computer",
 diffBeginner:"Principiante",diffAdvanced:"Avanzato",levelLabel:"Livello di difficoltà:",
 retryBtn:"↺ Riprova",nextBtn:"Principio successivo →",puzzleHint:"? Suggerimento",
 settingsLabel:"Impostazioni",settingsTitle:"Impostazioni",themeLabel:"Tema",langLabel:"Lingua",closeBtn:"Chiudi",volumeLabel:"Volume",colorPickTitle:"Con quale colore giochi?",colorPickWhite:"Bianco",colorPickBlack:"Nero",eloHistoryBtn:"📊 Cronologia",eloHistoryTitle:"Cronologia partite",eloResetBtn:"Reimposta cronologia",techniqueFilterLabel:"Tecnica:",
 gameNewBtn:"♟ Nuova partita",gameUndoBtn:"↺ Annulla",gameHintBtn:"? Suggerimento",gameLevelLabel:"Difficoltà del computer: livello",playingWhite:"Giochi con il Bianco"},
 pt:{appTitle:"Princípios do Xadrez",appSubtitle:"35 regras clássicas, explicadas e praticadas como puzzles",
 saveBtn:"💾 Guardar progresso",saveStatus:"O teu progresso é guardado automaticamente neste navegador; clica em «Guardar» para o manter se mudares de navegador ou dispositivo.",
-tabBase:"Princípios básicos",tabAdvanced:"Princípios avançados",tabTactics:"Tática e estratégia",tabEndgames:"Motivos e finais",tabDefense:"Defesa",tabCaptures:"Táticas de captura",tabTraps:"Armadilhas de abertura",tabLive:"Jogo ao vivo vs. computador",
+tabBase:"Princípios básicos",tabAdvanced:"Princípios avançados",tabTactics:"Tática e estratégia",tabEndgames:"Motivos e finais",tabDefense:"Defesa",tabCaptures:"Táticas de captura",tabTraps:"Armadilhas de abertura",tabOpenings:"Aberturas",tabLive:"Jogo ao vivo vs. computador",
 diffBeginner:"Iniciante",diffAdvanced:"Avançado",levelLabel:"Nível de dificuldade:",
 retryBtn:"↺ Tentar novamente",nextBtn:"Próximo princípio →",puzzleHint:"? Dica",
 settingsLabel:"Definições",settingsTitle:"Definições",themeLabel:"Tema",langLabel:"Idioma",closeBtn:"Fechar",volumeLabel:"Volume",colorPickTitle:"Com que cor jogas?",colorPickWhite:"Brancas",colorPickBlack:"Pretas",eloHistoryBtn:"📊 Histórico",eloHistoryTitle:"Histórico de partidas",eloResetBtn:"Repor histórico",techniqueFilterLabel:"Técnica:",
 gameNewBtn:"♟ Novo jogo",gameUndoBtn:"↺ Desfazer",gameHintBtn:"? Dica",gameLevelLabel:"Dificuldade do computador: nível",playingWhite:"Jogas com as Brancas"},
 ru:{appTitle:"Принципы шахмат",appSubtitle:"35 классических правил, объяснённых и отработанных в виде задач",
 saveBtn:"💾 Сохранить прогресс",saveStatus:"Ваш прогресс автоматически сохраняется в этом браузере; нажмите «Сохранить», чтобы сохранить его при смене браузера или устройства.",
-tabBase:"Базовые принципы",tabAdvanced:"Продвинутые принципы",tabTactics:"Тактика и стратегия",tabEndgames:"Мотивы и эндшпили",tabDefense:"Защита",tabCaptures:"Тактика взятий",tabTraps:"Ловушки в дебютах",tabLive:"Живая партия против компьютера",
+tabBase:"Базовые принципы",tabAdvanced:"Продвинутые принципы",tabTactics:"Тактика и стратегия",tabEndgames:"Мотивы и эндшпили",tabDefense:"Защита",tabCaptures:"Тактика взятий",tabTraps:"Ловушки в дебютах",tabOpenings:"Дебюты",tabLive:"Живая партия против компьютера",
 diffBeginner:"Новичок",diffAdvanced:"Продвинутый",levelLabel:"Уровень сложности:",
 retryBtn:"↺ Попробовать снова",nextBtn:"Следующий принцип →",puzzleHint:"? Подсказка",
 settingsLabel:"Настройки",settingsTitle:"Настройки",themeLabel:"Тема",langLabel:"Язык",closeBtn:"Закрыть",volumeLabel:"Громкость",colorPickTitle:"Каким цветом играете?",colorPickWhite:"Белые",colorPickBlack:"Чёрные",eloHistoryBtn:"📊 История",eloHistoryTitle:"История партий",eloResetBtn:"Сбросить историю",techniqueFilterLabel:"Техника:",
 gameNewBtn:"♟ Новая партия",gameUndoBtn:"↺ Отменить",gameHintBtn:"? Подсказка",gameLevelLabel:"Сложность компьютера: уровень",playingWhite:"Вы играете белыми"},
 zh:{appTitle:"国际象棋原理",appSubtitle:"35条经典规则，通过测试题讲解与练习",
 saveBtn:"💾 保存进度",saveStatus:"您的进度会自动保存在此浏览器中；点击「保存」以便更换浏览器或设备后仍能保留。",
-tabBase:"基础原理",tabAdvanced:"进阶原理",tabTactics:"战术与策略",tabEndgames:"主题与残局",tabDefense:"防守",tabCaptures:"吃子战术",tabTraps:"开局陷阱",tabLive:"人机实时对战",
+tabBase:"基础原理",tabAdvanced:"进阶原理",tabTactics:"战术与策略",tabEndgames:"主题与残局",tabDefense:"防守",tabCaptures:"吃子战术",tabTraps:"开局陷阱",tabOpenings:"开局",tabLive:"人机实时对战",
 diffBeginner:"初学者",diffAdvanced:"进阶",levelLabel:"难度级别：",
 retryBtn:"↺ 重试",nextBtn:"下一个原理 →",puzzleHint:"？提示",
 settingsLabel:"设置",settingsTitle:"设置",themeLabel:"主题",langLabel:"语言",closeBtn:"关闭",volumeLabel:"音量",colorPickTitle:"你执什么颜色？",colorPickWhite:"白方",colorPickBlack:"黑方",eloHistoryBtn:"📊 历史记录",eloHistoryTitle:"对局历史",eloResetBtn:"重置历史记录",techniqueFilterLabel:"技术：",
 gameNewBtn:"♟ 新对局",gameUndoBtn:"↺ 悔棋",gameHintBtn:"？提示",gameLevelLabel:"电脑难度：等级",playingWhite:"您执白棋"},
 ja:{appTitle:"チェスの原則",appSubtitle:"35の古典的なルールをパズル形式で解説・練習",
 saveBtn:"💾 進捗を保存",saveStatus:"進捗はこのブラウザに自動的に記憶されます。ブラウザや端末を変更する場合は「保存」を押して保持してください。",
-tabBase:"基本原則",tabAdvanced:"応用原則",tabTactics:"戦術と戦略",tabEndgames:"モチーフと終盤",tabDefense:"防御",tabCaptures:"駒取り戦術",tabTraps:"序盤の罠",tabLive:"コンピューターとのライブ対局",
+tabBase:"基本原則",tabAdvanced:"応用原則",tabTactics:"戦術と戦略",tabEndgames:"モチーフと終盤",tabDefense:"防御",tabCaptures:"駒取り戦術",tabTraps:"序盤の罠",tabOpenings:"定跡",tabLive:"コンピューターとのライブ対局",
 diffBeginner:"初級",diffAdvanced:"上級",levelLabel:"難易度：",
 retryBtn:"↺ もう一度",nextBtn:"次の原則 →",puzzleHint:"？ヒント",
 settingsLabel:"設定",settingsTitle:"設定",themeLabel:"テーマ",langLabel:"言語",closeBtn:"閉じる",volumeLabel:"音量",colorPickTitle:"どちらの色でプレイしますか？",colorPickWhite:"白",colorPickBlack:"黒",eloHistoryBtn:"📊 履歴",eloHistoryTitle:"対局履歴",eloResetBtn:"履歴をリセット",techniqueFilterLabel:"テクニック：",
 gameNewBtn:"♟ 新しい対局",gameUndoBtn:"↺ 一手戻す",gameHintBtn:"？ヒント",gameLevelLabel:"コンピューターの難易度：レベル",playingWhite:"あなたは白番です"},
 ar:{appTitle:"مبادئ الشطرنج",appSubtitle:"٣٥ قاعدة كلاسيكية، مشروحة ومتدرَّب عليها كألغاز",
 saveBtn:"💾 حفظ التقدم",saveStatus:"يُحفظ تقدمك تلقائيًا في هذا المتصفح؛ اضغط «حفظ» للاحتفاظ به عند تغيير المتصفح أو الجهاز.",
-tabBase:"المبادئ الأساسية",tabAdvanced:"المبادئ المتقدمة",tabTactics:"التكتيك والاستراتيجية",tabEndgames:"المواضيع والنهايات",tabDefense:"الدفاع",tabCaptures:"تكتيكات الأسر",tabTraps:"فخاخ الافتتاحات",tabLive:"مباراة مباشرة ضد الحاسوب",
+tabBase:"المبادئ الأساسية",tabAdvanced:"المبادئ المتقدمة",tabTactics:"التكتيك والاستراتيجية",tabEndgames:"المواضيع والنهايات",tabDefense:"الدفاع",tabCaptures:"تكتيكات الأسر",tabTraps:"فخاخ الافتتاحات",tabOpenings:"الافتتاحات",tabLive:"مباراة مباشرة ضد الحاسوب",
 diffBeginner:"مبتدئ",diffAdvanced:"متقدم",levelLabel:"مستوى الصعوبة:",
 retryBtn:"↺ حاول مجددًا",nextBtn:"← المبدأ التالي",puzzleHint:"؟ تلميح",
 settingsLabel:"الإعدادات",settingsTitle:"الإعدادات",themeLabel:"السمة",langLabel:"اللغة",closeBtn:"إغلاق",volumeLabel:"مستوى الصوت",colorPickTitle:"بأي لون تلعب؟",colorPickWhite:"أبيض",colorPickBlack:"أسود",eloHistoryBtn:"📊 السجل",eloHistoryTitle:"سجل المباريات",eloResetBtn:"إعادة تعيين السجل",techniqueFilterLabel:"التقنية:",
@@ -7105,7 +7230,7 @@ function applyLanguage(){
   const saveStatusEl=document.getElementById("saveStatus");
   if(saveStatusEl) saveStatusEl.textContent=t("saveStatus");
   const tabs=document.querySelectorAll(".pagetab");
-  const tabKeys=["tabBase","tabAdvanced","tabTactics","tabEndgames","tabDefense","tabCaptures","tabLive","tabTraps"];
+  const tabKeys=["tabBase","tabAdvanced","tabTactics","tabEndgames","tabDefense","tabCaptures","tabLive","tabTraps","tabOpenings"];
   tabs.forEach((btn,i)=>{
     const countSpan=btn.querySelector(".count");
     btn.textContent=t(tabKeys[i]);
@@ -7300,6 +7425,7 @@ function boot(){
     loadPrinciple(0);
   });
   loadPrinciple(0);
+  if(currentPage===9) openingsEnter();
   initDb();
 }
 try{
