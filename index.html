@@ -522,10 +522,10 @@ button.btn:disabled{opacity:.45; cursor:default;}
   body.game-page-active .game-log{max-height:280px;}
 }
 .open-result{font-weight:700;color:var(--good);min-height:1.2em;font-size:.9rem;text-align:center;}
-.open-controls .btn{flex:1 1 auto; min-width:48px;}
+.open-controls .btn{flex:1 1 auto; min-width:48px; min-height:44px;}
 .open-moves{display:flex; flex-wrap:wrap; align-items:center; gap:5px 4px; max-height:360px; overflow-y:auto; padding-right:4px;}
 .om-num{font-family:'JetBrains Mono',monospace; font-size:.75rem; color:var(--text-dim); margin:0 2px 0 8px;}
-.om-move{font-family:'JetBrains Mono',monospace; font-size:.8rem; padding:4px 8px; border-radius:6px; border:1px solid var(--border); background:var(--surface-2); color:var(--text); cursor:pointer;}
+.om-move{font-family:'JetBrains Mono',monospace; font-size:.8rem; min-height:36px; padding:6px 10px; border-radius:6px; border:1px solid var(--border); background:var(--surface-2); color:var(--text); cursor:pointer;}
 .om-move.active{background:var(--accent); color:#2a1d05; border-color:var(--accent);}
 .open-filter{display:flex; flex-direction:column; gap:8px;}
 .open-filter input[type=search]{font-family:'Public Sans',sans-serif; font-size:.9rem; padding:10px 12px; border-radius:10px; border:1px solid var(--border); background:var(--surface-2); color:var(--text); width:100%;}
@@ -703,7 +703,7 @@ button.btn:disabled{opacity:.45; cursor:default;}
       </div>
       <p style="margin:0;font-size:.85rem;color:var(--text-dim);line-height:1.5;">Fiecare linie pornește din poziția inițială și se joacă până la capăt: fie mat, fie o damă capturată. Alege deschiderea din listă, apoi parcurge mutările cu butoanele sau apasă direct pe o mutare.</p>
       <div class="open-filter">
-        <input type="search" id="openSearch" placeholder="Caută deschiderea (ex: Scotch, Deutz, Evans, Italian Gambit)">
+        <input type="search" id="openSearch" placeholder="Caută (ex: Scotch, Deutz, Italian)">
         <label class="open-toggle"><input type="checkbox" id="openAll"> Arată și liniile de teorie (fără mat)</label>
       </div>
       <select class="lang-select" id="openingSelect"></select>
