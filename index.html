@@ -572,6 +572,7 @@ button.btn:disabled{opacity:.45; cursor:default;}
   .main .board-card > .actions{position:fixed; left:0; right:0; bottom:0; z-index:40; margin:0; padding:10px 10px calc(10px + env(safe-area-inset-bottom,0px)); background:var(--surface); border-top:1px solid var(--border); box-shadow:0 -6px 18px rgba(0,0,0,.08); flex-wrap:nowrap; gap:8px;}
   .main .board-card > .actions .btn{flex:1 1 0; min-height:46px; padding:8px 4px; font-size:.82rem; line-height:1.15; white-space:normal;}
 }
+.open-fs{width:100%; margin-top:8px; min-height:44px;}
 </style>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Public+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
@@ -748,6 +749,7 @@ button.btn:disabled{opacity:.45; cursor:default;}
         <button class="btn" id="openLast" type="button" title="Sfârșitul liniei">⏭</button>
         <button class="btn" id="openAuto" type="button">▶ Redă tot</button>
       </div>
+      <button class="btn open-fs" id="openFs" type="button">⛶ Ecran complet</button>
     </div>
     <div class="content-card">
       <div>
@@ -2949,6 +2951,17 @@ function activeData(p){
 }
 
 /* ---- fullscreen + swipe ---- */
+function fsToggle(){
+  const p=document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen();
+  if(p&&p.catch) p.catch(()=>{});
+}
+function openFsInit(){
+  const b=document.getElementById("openFs");
+  if(!b) return;
+  if(!document.documentElement.requestFullscreen){ b.style.display="none"; return; }
+  b.addEventListener("click",fsToggle);
+  document.addEventListener("fullscreenchange",()=>{ b.textContent=document.fullscreenElement?"⤡ Ieși din ecran complet":"⛶ Ecran complet"; });
+}
 function fsInit(){
   const btn=document.getElementById("fsBtn");
   if(!btn) return;
@@ -5324,7 +5337,10 @@ function openingsRender(){
   });
   list.innerHTML=html;
   const act=list.querySelector(".om-move.active");
-  if(act) act.scrollIntoView({block:"nearest"});
+  if(act){
+    const lr=list.getBoundingClientRect(), ar=act.getBoundingClientRect();
+    list.scrollTop+=(ar.top-lr.top)-lr.height/2+ar.height/2;
+  }
   if(openMode==="play"){
     if(openStep>=total){
       openingsMsg("Linia s-a încheiat.","ok");
@@ -7690,6 +7706,7 @@ function boot(){
   buildPageSelect();
   diagInit();
   fsInit();
+  openFsInit();
   swipeInit();
   document.getElementById("techniqueFilterSelect").addEventListener("change",(e)=>{
     if(currentPage===8){ page8ThemeFilter=e.target.value; savePage8Filter(); }
