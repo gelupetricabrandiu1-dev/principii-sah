@@ -545,6 +545,23 @@ button.btn:disabled{opacity:.45; cursor:default;}
 .open-msg{min-height:1.3em; font-size:.9rem; font-weight:600; text-align:center; color:var(--text);}
 .open-msg.ok{color:var(--good);}
 .open-msg.bad{color:var(--bad);}
+
+@media (prefers-reduced-motion: no-preference){
+  .sq.legal::after{animation:legalPop .22s ease-out;}
+  @keyframes legalPop{from{transform:scale(.2);opacity:0}to{transform:scale(1);opacity:1}}
+  .sq.king-check{animation:checkPulse 1.1s ease-in-out infinite;}
+  @keyframes checkPulse{0%,100%{box-shadow:inset 0 0 0 4px var(--check)}50%{box-shadow:inset 0 0 0 8px var(--check)}}
+  .sq.hit{animation:hitFlash .42s ease-out;}
+  @keyframes hitFlash{0%{background:rgba(190,60,40,.6)}100%{background:transparent}}
+  .feedback.show{animation:fadeUp .3s ease-out;}
+  @keyframes fadeUp{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+  .main,.game-wrap.show{animation:fadeIn .35s ease-out;}
+  @keyframes fadeIn{from{opacity:0}to{opacity:1}}
+  .mate-banner.show span{animation:bannerIn .45s cubic-bezier(.2,1.4,.4,1);}
+  @keyframes bannerIn{from{transform:scale(.6);opacity:0}to{transform:scale(1);opacity:1}}
+  .btn,.navchip,.om-move,.nav-compact-btn{transition:transform .12s ease, background .2s ease;}
+  .btn:active,.navchip:active,.om-move:active,.nav-compact-btn:active{transform:scale(.95);}
+}
 </style>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Public+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
@@ -3082,8 +3099,43 @@ function turnLabelText(){
   document.getElementById("turnLabel").innerHTML=L("La mutare:")+" <b>"+L(t)+"</b>";
 }
 
+/* ---- move animations ---- */
+function animateMoveOn(container, from, to, captured, key){
+  const prev=container.__animKey;
+  container.__animKey=key;
+  if(prev===undefined || prev===key || !from || !to) return;
+  if(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  const fromEl=container.querySelector('.sq[data-sq="'+from+'"]');
+  const toEl=container.querySelector('.sq[data-sq="'+to+'"]');
+  if(!fromEl||!toEl) return;
+  const flip=container.classList.contains("flipped");
+  const a=fromEl.getBoundingClientRect(), b=toEl.getBoundingClientRect();
+  const sign=flip?-1:1;
+  const dx=(a.left-b.left)*sign, dy=(a.top-b.top)*sign;
+  const base=flip?"rotate(180deg)":"";
+  const piece=toEl.querySelector(".piece");
+  if(piece){
+    piece.style.transition="none";
+    piece.style.transform="translate("+dx+"px,"+dy+"px) "+base;
+    piece.style.zIndex="3";
+    void piece.offsetWidth;
+    piece.style.transition="transform .28s cubic-bezier(.2,.8,.2,1)";
+    piece.style.transform=base;
+    setTimeout(()=>{ piece.style.transition=""; piece.style.transform=""; piece.style.zIndex=""; },320);
+  }
+  if(captured){
+    toEl.classList.add("hit");
+    setTimeout(()=>toEl.classList.remove("hit"),420);
+  }
+}
+function animateFromHistory(container, ch){
+  const h=ch.history({verbose:true});
+  const last=h[h.length-1];
+  animateMoveOn(container, last?last.from:null, last?last.to:null, !!(last&&last.captured), h.length+":"+(last?last.from+last.to:""));
+}
 function renderMain(){
   paintPieces(boardEl,chess.board());
+  animateFromHistory(boardEl,chess);
   boardEl.querySelectorAll(".sq").forEach(el=>{el.classList.remove("selected","legal","legal-capture","hl-good","hl-bad","lastmove","king-check","king-mate");});
   mainArrows.innerHTML="";
   turnLabelText();
@@ -4942,6 +4994,7 @@ function findKingSquare(chessInst,color){
 
 function renderGame(){
   paintPieces(gameBoardEl,game.board());
+  animateFromHistory(gameBoardEl,game);
   gameBoardEl.querySelectorAll(".sq").forEach(el=>el.classList.remove("selected","legal","legal-capture","lastmove","king-check","king-mate"));
   if(lastMove){
     const fromEl=gameBoardEl.querySelector('.sq[data-sq="'+lastMove.from+'"]');
@@ -5203,6 +5256,7 @@ function openingsRender(){
   const e=OPENINGS_DATA[openIdx];
   const {g,last}=openingsPosition();
   paintPieces(openBoardEl,g.board());
+  animateMoveOn(openBoardEl, last?last.from:null, last?last.to:null, !!(last&&last.captured), openIdx+":"+openStep);
   openBoardEl.querySelectorAll(".sq").forEach(el=>el.classList.remove("lastmove","king-check","king-mate","selected","legal","legal-capture"));
   if(last){
     openBoardEl.querySelector('.sq[data-sq="'+last.from+'"]').classList.add("lastmove");
