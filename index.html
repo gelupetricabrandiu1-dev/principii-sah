@@ -732,8 +732,12 @@ button.btn.color-pick-btn:hover{background:var(--accent-soft); filter:none;}
 .board.flipped .sq .coord.alt{display:block;}
 .board.flipped .sq .coord-r{top:auto; left:auto; bottom:2px; right:4px;}
 .board.flipped .sq .coord-f{bottom:auto; right:auto; top:3px; left:4px;}
-.sq .coord-sq{top:2px; left:3px; font-size:clamp(.45rem,2.1cqw,.72rem); opacity:.9;}
+.sq .coord-sq{top:2px; left:3px; font-size:clamp(.62rem,3cqw,.85rem); font-weight:800; letter-spacing:-.01em;}
 .board.flipped .sq .coord-sq{display:block; top:auto; left:auto; bottom:2px; right:3px;}
+.board-outer .piece{font-size:calc(100cqw / 8 * .74);}
+.board .sq.light .coord-sq{color:#7a5232;}
+.board .sq.dark .coord-sq{color:#fff6e6;}
+.board .sq.lastmove .coord-sq,.board .sq.hl-good .coord-sq,.board .sq.hl-bad .coord-sq{color:#3a2a14;}
 .sq.light .coord{color:var(--board-dark);}
 .sq.dark .coord{color:var(--board-light);}
 .sq.dark.lastmove{background:var(--lastmove-fill-dark) !important;}

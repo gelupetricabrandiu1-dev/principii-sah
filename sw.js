@@ -1,4 +1,4 @@
-const CACHE_NAME = "principii-sah-v26";
+const CACHE_NAME = "principii-sah-v27";
 const CORE_ASSETS = [
   "./",
   "./index.html",
@@ -26,8 +26,10 @@ self.addEventListener("activate", (event) => {
 
 self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET") return;
+  // own files are always revalidated with the server, so a new version shows up right after publishing
+  const sameOrigin = new URL(event.request.url).origin === self.location.origin;
   event.respondWith(
-    fetch(event.request)
+    fetch(event.request, sameOrigin ? { cache: "no-cache" } : undefined)
       .then((response) => {
         if (response && response.status === 200 && response.type === "basic") {
           const clone = response.clone();
