@@ -825,7 +825,38 @@ button.btn.color-pick-btn:hover{background:var(--accent-soft); filter:none;}
   .top h1{font-size:1.5rem;}
 }
 
+/* − 100% + : board size, laptop only */
+.board-size{display:none; align-items:center; gap:4px; background:var(--surface-2); border-radius:999px; padding:2px;}
+.board-size .settings-btn{width:38px; height:38px; font-size:1.3rem; font-weight:700; background:var(--surface);}
+.board-size-label{min-width:44px; text-align:center; font-family:'JetBrains Mono',monospace; font-size:.8rem; font-weight:600; color:var(--accent);}
 /* laptop / desktop: board fixed on the left, as tall as the screen; everything else in the right column */
+@media (min-width:1000px){
+  body.desk-board .board-size{display:flex;}
+  /* smaller text in the right-hand column, so the board gets the room */
+  body.desk-board .wrap{font-size:.9rem; max-width:720px;}
+  body.desk-board .top h1{font-size:1.45rem;}
+  body.desk-board .top .subtitle{font-size:.75rem;}
+  body.desk-board .content-card{padding:16px 18px; gap:10px;}
+  body.desk-board .content-card h2{font-size:1.1rem !important;}
+  body.desk-board .content-card p{font-size:.85rem;}
+  body.desk-board .eyebrow{font-size:.68rem;}
+  body.desk-board button.btn{font-size:.82rem; min-height:38px; padding:7px 12px;}
+  body.desk-board .lang-select,
+  body.desk-board .open-filter input[type=search]{min-height:40px; font-size:.85rem; padding:7px 10px;}
+  body.desk-board .open-topbar .open-pick-row select{min-height:44px; font-size:.9rem;}
+  body.desk-board .open-filter-btn{flex-basis:44px;}
+  body.desk-board .open-level button{min-height:40px; font-size:.82rem;}
+  body.desk-board .open-level button small{font-size:.6rem;}
+  body.desk-board .pagetab{font-size:.78rem; padding:7px 12px;}
+  body.desk-board .save-btn{font-size:.78rem; padding:7px 14px;}
+  body.desk-board .save-status{font-size:.7rem;}
+  body.desk-board .settings-btn{width:40px; height:40px; font-size:1.05rem;}
+  body.desk-board .status-line{font-size:.8rem; padding:8px 12px;}
+  body.desk-board .open-play-row .btn,
+  body.desk-board .open-play-row select{min-height:42px !important; font-size:.82rem;}
+  body.desk-board .open-toggle{min-height:44px; font-size:.82rem;}
+  body.desk-board .navchip{width:32px; height:32px; font-size:.72rem;}
+}
 @media (min-width:1000px){
   body.desk-board{padding-left:calc(var(--bsz,560px) + 24px + 16px + 28px);}
   body.desk-board .board-card{position:fixed; top:16px; left:16px; z-index:30; width:calc(var(--bsz,560px) + 24px); max-height:calc(100vh - 32px); overflow-y:auto; padding:12px; gap:10px;}
@@ -870,6 +901,11 @@ button.btn.color-pick-btn:hover{background:var(--accent-soft); filter:none;}
     </div>
     <div class="top-right">
       <div class="progress" id="progress">0 / 35 rezolvate</div>
+      <div class="board-size" id="boardSize" role="group" aria-label="Mărimea tablei">
+        <button class="settings-btn" id="boardSmaller" type="button" title="Micșorează tabla" aria-label="Micșorează tabla">−</button>
+        <span class="board-size-label" id="boardSizeLabel" title="Mărimea tablei">100%</span>
+        <button class="settings-btn" id="boardBigger" type="button" title="Mărește tabla" aria-label="Mărește tabla">+</button>
+      </div>
       <button class="settings-btn" id="fsBtn" type="button" title="Ecran complet" aria-label="Ecran complet">⛶</button>
       <button class="settings-btn" id="settingsBtn" type="button" title="Setări" aria-label="Setări">⚙</button>
     </div>
@@ -3380,9 +3416,20 @@ function fitBoardDesktop(){
     });
     extra+=n*(parseFloat(cs.rowGap)||0);
     const byH=window.innerHeight-32-extra;
-    const byW=window.innerWidth-16-24-28-16-380;
-    root.style.setProperty("--bsz",Math.max(320,Math.floor(Math.min(byH,byW)))+"px");
+    const byW=window.innerWidth-16-24-28-16-340;
+    /* the size the user chose with − / +: 100% = as tall as the screen allows */
+    const s=Math.min(byH*boardScale, byW);
+    root.style.setProperty("--bsz",Math.max(280,Math.floor(s))+"px");
   }
+  const lb=document.getElementById("boardSizeLabel");
+  if(lb) lb.textContent=Math.round(boardScale*100)+"%";
+}
+let boardScale=1;
+try{ const v=parseFloat(localStorage.getItem("principii-sah-marime-tabla")); if(v>=0.5 && v<=1.6) boardScale=v; }catch(e){}
+function boardScaleBy(d){
+  boardScale=Math.round(Math.max(0.5,Math.min(1.6,boardScale+d))*100)/100;
+  try{ localStorage.setItem("principii-sah-marime-tabla",String(boardScale)); }catch(e){}
+  fitBoardDesktop();
 }
 function deskLayoutInit(){
   const spec=[
@@ -3391,6 +3438,9 @@ function deskLayoutInit(){
     ["#page5Container .elo-row","#page5Container .game-log-card"],
     ["#page5Container .game-level-row","#page5Container .game-log-card"],
     ["#openingsContainer .open-play-row","#openingsContainer .content-card"],
+    ["#openingsContainer .open-controls","#openingsContainer .content-card"],
+    ["#openingsContainer .board-card .status-line","#openingsContainer .content-card"],
+    ["#openResult","#openingsContainer .content-card"],
     ["#openPlayMsg","#openingsContainer .content-card"]
   ];
   deskMoves=spec.map(([sel,target])=>{
@@ -3409,7 +3459,10 @@ function deskLayoutInit(){
   };
   if(mq.addEventListener) mq.addEventListener("change",apply); else mq.addListener(apply);
   let rt=0;
-  window.addEventListener("resize",()=>{ clearTimeout(rt); rt=setTimeout(fitBoardDesktop,60); });
+  window.addEventListener("resize",()=>{
+    clearTimeout(rt);
+    rt=setTimeout(()=>{ if(mq.matches!==document.body.classList.contains("desk-board")) apply(); else fitBoardDesktop(); },60);
+  });
   window.addEventListener("load",fitBoardDesktop);
   if(document.fonts && document.fonts.ready) document.fonts.ready.then(fitBoardDesktop);
   apply();
@@ -8406,6 +8459,8 @@ function boot(){
   renderTechniqueFilterSelect();
   buildPageSelect();
   pageMenuInit();
+  document.getElementById("boardSmaller").addEventListener("click",()=>boardScaleBy(-0.05));
+  document.getElementById("boardBigger").addEventListener("click",()=>boardScaleBy(0.05));
   deskLayoutInit();
   diagInit();
   fsInit();
