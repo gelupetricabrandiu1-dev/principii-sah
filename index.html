@@ -714,7 +714,6 @@ button.btn.color-pick-btn:hover{background:var(--accent-soft); filter:none;}
 .player-add{display:flex; flex-direction:column; gap:8px;}
 .player-box input[type=text]{padding:10px 12px; border-radius:12px; border:1px solid var(--border); background:var(--surface-2); color:var(--text); font-family:inherit; font-size:.95rem;}
 .sync-status{font-size:.85rem; color:var(--text-dim); word-break:break-word;}
-.sync-status b{color:var(--text); font-family:monospace; font-weight:600; word-break:break-all;}
 #openingsContainer .open-name::before{content:"📖 ";}
 .open-pick-row{display:flex; gap:8px;}
 .open-pick-row select{flex:1 1 auto; min-width:0;}
@@ -957,11 +956,9 @@ button.btn.color-pick-btn:hover{background:var(--accent-soft); filter:none;}
         <label id="syncLabel">Sincronizare</label>
         <div class="player-box">
           <div id="syncStatus" class="sync-status">Sincronizarea nu e activată încă.</div>
-          <div class="sync-status">Codul jucătorului: <b id="syncCodeText"></b></div>
-          <button class="btn" id="syncCopyBtn" type="button">Copiază codul</button>
-          <input type="text" id="syncCodeIn" placeholder="Lipește codul de pe celălalt dispozitiv">
-          <button class="btn" id="syncUseBtn" type="button">Folosește codul</button>
+          <button class="btn" id="syncConnectBtn" type="button">Conectează-te cu Google</button>
           <button class="btn" id="syncNowBtn" type="button">Sincronizează acum</button>
+          <button class="btn" id="syncOffBtn" type="button">Deconectează</button>
         </div>
       </div>
       <div class="settings-row">
@@ -1199,17 +1196,23 @@ button.btn.color-pick-btn:hover{background:var(--accent-soft); filter:none;}
 <script>
 /* jucătorii: fiecare jucător își are progresul sub cheia "cheie@jucător"; progresul de până acum rămâne sub cheile simple
    (jucătorul implicit). Setările de dispozitiv (tema, limba, volumul, mărimea tablei) rămân comune. */
-const PLAYER_KEY="principii-sah-jucator", PLAYERS_KEY="principii-sah-jucatori", SYNC_MAP_KEY="principii-sah-sync-coduri", STAMPS_KEY="principii-sah-sync-timp";
-const DEVICE_KEYS=["sah-principii-theme","sah-principii-lang","sah-design-v2","sah-principii-volume","principii-sah-marime-tabla","sah-principii-page",PLAYER_KEY,PLAYERS_KEY,SYNC_MAP_KEY,STAMPS_KEY];
-const SYNC_CONFIG=null; /* aici se lipește configurația Firebase, ca obiect (vezi pașii de instalare) */
-const SYNC_VERSION="10.12.2";
-let syncDb=null, syncFs=null, syncTimer=null, syncRunning=false;
+const PLAYER_KEY="principii-sah-jucator", PLAYERS_KEY="principii-sah-jucatori", STAMPS_KEY="principii-sah-sync-timp", TOMBS_KEY="principii-sah-sterse", DRIVE_FLAG="principii-sah-drive";
+const DEVICE_KEYS=["sah-principii-theme","sah-principii-lang","sah-design-v2","sah-principii-volume","principii-sah-marime-tabla","sah-principii-page",PLAYER_KEY,PLAYERS_KEY,STAMPS_KEY,TOMBS_KEY,DRIVE_FLAG];
+const GOOGLE_CLIENT_ID=null; /* ID-ul clientului OAuth din Google Cloud, de forma …apps.googleusercontent.com (vezi pașii de instalare) */
+const DRIVE_SCOPE="https://www.googleapis.com/auth/drive.appdata";
+const DRIVE_FILE="progres-sah.json";
+let driveToken="", driveClient=null, syncTimer=null, syncRunning=false;
 function playerName(){ try{ return localStorage.getItem(PLAYER_KEY)||""; }catch(e){ return ""; } }
 function ppKey(k){ const p=playerName(); return (!p||DEVICE_KEYS.indexOf(k)>=0)?k:k+"@"+p; }
 function ppGet(k){ return localStorage.getItem(ppKey(k)); }
+/* ora modificării se notează doar pentru schimbările făcute după pornire și doar dacă valoarea chiar s-a schimbat,
+   ca o pornire să nu „învechească” progresul de pe alt dispozitiv */
+let ppBooted=false;
+setTimeout(()=>{ ppBooted=true; }, 2500);
 function ppSet(k,v){
-  localStorage.setItem(ppKey(k),v);
-  if(DEVICE_KEYS.indexOf(k)<0){ stampSet(ppKey(k)); syncSoon(); }
+  const fk=ppKey(k), changed=localStorage.getItem(fk)!==v;
+  localStorage.setItem(fk,v);
+  if(changed && ppBooted && DEVICE_KEYS.indexOf(k)<0){ stampSet(fk); syncSoon(); }
 }
 const PRINCIPLES = [
 {id:1,title:"Controlează centrul tăblii",fen:"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",turn:"w",correct:[["e2","e4"],["d2","d4"]],
@@ -8534,6 +8537,7 @@ function playerAdd(){
   if(!name) return;
   const names=playersLoad();
   if(names.indexOf(name)>=0){ playerSwitch(name); return; }
+  if(tombsLoad()[name]){ alert("Numele ăsta a fost șters. Alege alt nume."); return; }
   if(document.getElementById("playerCopy").checked) playerCopyDefault(name);
   playersSave([...names,name]);
   playerSwitch(name);
@@ -8545,39 +8549,26 @@ function playerDelete(){
   const suffix="@"+name, keys=[];
   for(let i=0;i<localStorage.length;i++) keys.push(localStorage.key(i));
   keys.forEach(k=>{ if(k && k.slice(-suffix.length)===suffix) localStorage.removeItem(k); });
+  const tb=tombsLoad(); tb[name]=Date.now(); tombsSave(tb);
   playersSave(playersLoad().filter(n=>n!==name));
   if(playerName()===name) playerSwitch(""); else playersFill();
 }
-/* sincronizare între dispozitive (Firebase Firestore). Fără configurație (SYNC_CONFIG = null) aplicația merge doar pe dispozitivul acesta.
-   Fiecare jucător are un cod de sincronizare: același cod pe telefon și pe laptop = același progres.
-   La conflict, pentru fiecare cheie câștigă modificarea cea mai nouă. */
+/* sincronizare pe Google Drive: fișierul ascuns al aplicației (spațiul „appDataFolder”), deci aplicația nu vede restul Drive-ului.
+   Un singur fișier cu toți jucătorii. Fără GOOGLE_CLIENT_ID aplicația merge doar pe dispozitivul acesta.
+   La conflict, pentru fiecare cheie câștigă modificarea cea mai nouă. Ștergerea unui jucător se sincronizează și ea. */
+function syncStatus(text){ const el=document.getElementById("syncStatus"); if(el) el.textContent=text; }
+function allPlayers(){ return [""].concat(playersLoad()); }
 function stampsLoad(){ try{ return JSON.parse(localStorage.getItem(STAMPS_KEY)||"{}")||{}; }catch(e){ return {}; } }
 function stampsSave(o){ try{ localStorage.setItem(STAMPS_KEY,JSON.stringify(o)); }catch(e){} }
 function stampSet(fullKey){ const o=stampsLoad(); o[fullKey]=Date.now(); stampsSave(o); }
-function codesLoad(){ try{ return JSON.parse(localStorage.getItem(SYNC_MAP_KEY)||"{}")||{}; }catch(e){ return {}; } }
-function codesSave(o){ try{ localStorage.setItem(SYNC_MAP_KEY,JSON.stringify(o)); }catch(e){} }
-function syncCode(){ return codesLoad()[playerName()]||""; }
-function syncCodeNew(){
-  const a=new Uint8Array(16); crypto.getRandomValues(a);
-  return Array.from(a,b=>b.toString(16).padStart(2,"0")).join("");
-}
-function syncStatus(text){ const el=document.getElementById("syncStatus"); if(el) el.textContent=text; }
-function syncShowCode(){
-  const el=document.getElementById("syncCodeText");
-  if(el) el.textContent=syncCode()||"(se creează la prima sincronizare)";
-  if(!SYNC_CONFIG) syncStatus("Sincronizarea nu e activată încă (lipsește configurația Firebase).");
-}
-function syncSoon(){
-  if(!SYNC_CONFIG) return;
-  clearTimeout(syncTimer);
-  syncTimer=setTimeout(syncNow,3000);
-}
+function tombsLoad(){ try{ return JSON.parse(localStorage.getItem(TOMBS_KEY)||"{}")||{}; }catch(e){ return {}; } }
+function tombsSave(o){ try{ localStorage.setItem(TOMBS_KEY,JSON.stringify(o)); }catch(e){} }
 function isProgressKey(k){
   return (k.indexOf("sah-principii-")===0 || k.indexOf("principii-sah-")===0) && DEVICE_KEYS.indexOf(k)<0 && k.indexOf("@")<0;
 }
-/* progresul jucătorului activ, cheie cu cheie, cu ora ultimei modificări */
-function syncLocal(){
-  const player=playerName(), suf=player?"@"+player:"", st=stampsLoad(), out={};
+/* progresul unui jucător ("" = implicit), cheie cu cheie, cu ora ultimei modificări */
+function syncLocal(player){
+  const suf=player?"@"+player:"", st=stampsLoad(), out={};
   for(let i=0;i<localStorage.length;i++){
     const k=localStorage.key(i);
     if(!k) continue;
@@ -8589,84 +8580,148 @@ function syncLocal(){
   }
   return out;
 }
-async function syncInit(){
-  if(syncDb) return syncDb;
-  const app=await import("https://www.gstatic.com/firebasejs/"+SYNC_VERSION+"/firebase-app.js");
-  syncFs=await import("https://www.gstatic.com/firebasejs/"+SYNC_VERSION+"/firebase-firestore.js");
-  syncDb=syncFs.getFirestore(app.initializeApp(SYNC_CONFIG));
-  return syncDb;
+function removePlayerKeys(player){
+  const suffix="@"+player, keys=[];
+  for(let i=0;i<localStorage.length;i++) keys.push(localStorage.key(i));
+  keys.forEach(k=>{ if(k && k.slice(-suffix.length)===suffix) localStorage.removeItem(k); });
 }
-async function syncNow(){
-  if(!SYNC_CONFIG) return;
+function driveLoadGis(){
+  return new Promise((res,rej)=>{
+    if(window.google && google.accounts && google.accounts.oauth2) return res();
+    const s=document.createElement("script");
+    s.src="https://accounts.google.com/gsi/client"; s.async=true;
+    s.onload=()=>res(); s.onerror=()=>rej(new Error("gis"));
+    document.head.appendChild(s);
+  });
+}
+/* interactive = la apăsarea butonului (poate deschide fereastra Google); altfel încearcă fără fereastră */
+async function driveGetToken(interactive){
+  if(driveToken) return driveToken;
+  await driveLoadGis();
+  return new Promise((res,rej)=>{
+    if(!driveClient){
+      driveClient=google.accounts.oauth2.initTokenClient({client_id:GOOGLE_CLIENT_ID, scope:DRIVE_SCOPE, callback:()=>{}});
+    }
+    driveClient.callback=(r)=>{ if(r.error){ rej(new Error(r.error)); return; } driveToken=r.access_token; res(driveToken); };
+    driveClient.error_callback=(e)=>rej(new Error((e&&e.type)||"popup"));
+    const prompt=interactive ? (localStorage.getItem(DRIVE_FLAG)?"":"consent") : "none";
+    driveClient.requestAccessToken({prompt});
+  });
+}
+async function driveFetch(url, opts){
+  const o=Object.assign({}, opts||{});
+  o.headers=Object.assign({Authorization:"Bearer "+driveToken}, o.headers||{});
+  const r=await fetch(url, o);
+  if(r.status===401){ driveToken=""; throw new Error("auth"); }
+  if(!r.ok) throw new Error("drive "+r.status);
+  return r;
+}
+async function driveReadFile(){
+  const q=encodeURIComponent("name='"+DRIVE_FILE+"' and trashed=false");
+  const list=await (await driveFetch("https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&fields=files(id)&q="+q)).json();
+  if(!list.files || !list.files.length) return {id:"", data:{}};
+  const id=list.files[0].id;
+  const data=await (await driveFetch("https://www.googleapis.com/drive/v3/files/"+id+"?alt=media")).json();
+  return {id, data};
+}
+async function driveWriteFile(id, data){
+  const body=JSON.stringify(data);
+  if(id){
+    await driveFetch("https://www.googleapis.com/upload/drive/v3/files/"+id+"?uploadType=media",{method:"PATCH", headers:{"Content-Type":"application/json"}, body});
+    return id;
+  }
+  const b="sah"+Date.now();
+  const multi="--"+b+"\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n"+JSON.stringify({name:DRIVE_FILE, parents:["appDataFolder"]})+"\r\n--"+b+"\r\nContent-Type: application/json\r\n\r\n"+body+"\r\n--"+b+"--";
+  const r=await driveFetch("https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart",{method:"POST", headers:{"Content-Type":"multipart/related; boundary="+b}, body:multi});
+  return (await r.json()).id;
+}
+function syncSoon(){
+  if(!GOOGLE_CLIENT_ID || !localStorage.getItem(DRIVE_FLAG)) return;
+  clearTimeout(syncTimer);
+  syncTimer=setTimeout(()=>syncNow(false),3000);
+}
+async function syncNow(interactive){
+  if(!GOOGLE_CLIENT_ID) return;
+  if(!localStorage.getItem(DRIVE_FLAG) && !interactive) return;
   if(syncRunning){ syncSoon(); return; }
-  if(!syncCode()){ const c=codesLoad(); c[playerName()]=syncCodeNew(); codesSave(c); }
-  syncShowCode();
-  const code=syncCode(), player=playerName(), suf=player?"@"+player:"";
   syncRunning=true;
   syncStatus("Se sincronizează…");
   try{
-    const db=await syncInit();
-    const ref=syncFs.doc(db,"progres",code);
-    const snap=await syncFs.getDoc(ref);
-    const remote=(snap.exists() && snap.data().data)||{};
-    const local=syncLocal(), st=stampsLoad();
-    const pulled={}; let changed=false;
-    /* de pe alt dispozitiv: cheile mai noi decât ale noastre */
-    Object.keys(remote).forEach(base=>{
-      const r=remote[base], l=local[base];
-      if(r.v===null || r.v===undefined) return;
-      if(!l || (r.t||0)>(l.t||0)){
-        localStorage.setItem(base+suf,r.v);
-        st[base+suf]=r.t||0;
-        pulled[base]=true; changed=true;
-      }
+    await driveGetToken(!!interactive);
+    const remote=await driveReadFile();
+    const rd=remote.data||{}, rj=rd.jucatori||{}, rs=rd.sterse||{};
+    const st=stampsLoad(), tombs=tombsLoad();
+    let changed=false;
+    /* jucătorii șterși pe alt dispozitiv */
+    Object.keys(rs).forEach(p=>{
+      if(!tombs[p] || rs[p]>tombs[p]){ tombs[p]=rs[p]; removePlayerKeys(p); changed=true; }
     });
-    /* de aici: cheile mai noi decât cele de pe server (sau care nu există încă pe server) */
-    const push={};
-    Object.keys(local).forEach(base=>{
-      if(pulled[base]) return;
-      const r=remote[base], l=local[base];
-      if(!r || (l.t||0)>(r.t||0)){
-        const t=l.t||Date.now();
-        st[base+suf]=t;
-        push[base]={v:l.v,t:t};
-      }
+    /* fiecare cheie rămâne cu varianta cea mai nouă */
+    const names=new Set(allPlayers().concat(Object.keys(rj)));
+    const next={};
+    names.forEach(p=>{
+      if(p && tombs[p]) return;
+      const L=syncLocal(p), R=rj[p]||{}, suf=p?"@"+p:"";
+      next[p]={};
+      new Set(Object.keys(L).concat(Object.keys(R))).forEach(b=>{
+        const l=L[b], r=R[b];
+        let pick=l;
+        if(r && (!l || (r.t||0)>(l.t||0))){
+          pick=r;
+          if(r.v!==null && r.v!==undefined){ localStorage.setItem(b+suf,r.v); st[b+suf]=r.t||0; changed=true; }
+        }
+        if(pick && pick.v!==null && pick.v!==undefined){
+          if(!pick.t){ pick={v:pick.v, t:Date.now()}; st[b+suf]=pick.t; }
+          next[p][b]=pick;
+        }
+      });
     });
     stampsSave(st);
-    if(Object.keys(push).length){
-      await syncFs.setDoc(ref,{data:push,updated:syncFs.serverTimestamp()},{merge:true});
+    tombsSave(tombs);
+    playersSave(Object.keys(next).filter(p=>p && !tombs[p]));
+    const out={v:1, jucatori:next, sterse:tombs};
+    if(JSON.stringify(out)!==JSON.stringify({v:1, jucatori:rj, sterse:rs})){
+      await driveWriteFile(remote.id, out);
     }
+    if(playerName() && tombs[playerName()]){ playerSwitch(""); return; }
     if(changed){
-      syncStatus("Progres nou primit de pe alt dispozitiv: reîncarc pagina…");
+      syncStatus("Progres nou de pe alt dispozitiv: reîncarc pagina…");
       setTimeout(()=>location.reload(),800);
     } else {
       syncStatus("Sincronizat la "+new Date().toLocaleTimeString("ro-RO",{hour:"2-digit",minute:"2-digit"}));
     }
   }catch(e){
-    syncStatus("Nu s-a putut sincroniza. Verifică internetul și codul.");
+    if(e.message==="auth") syncStatus("Confirmă din nou conectarea cu Google: apasă „Sincronizează acum”.");
+    else syncStatus("Nu s-a putut sincroniza. Verifică internetul.");
   }finally{
     syncRunning=false;
   }
 }
-function syncCopy(){
-  const code=syncCode();
-  if(!code){ syncStatus("Codul se creează la prima sincronizare."); return; }
-  try{ navigator.clipboard.writeText(code); syncStatus("Codul a fost copiat."); }catch(e){ syncStatus("Nu am putut copia. Selectează codul și copiază-l manual."); }
+async function syncConnect(){
+  if(!GOOGLE_CLIENT_ID){ syncStatus("Sincronizarea nu e activată încă (lipsește ID-ul clientului Google)."); return; }
+  try{
+    await driveGetToken(true);
+    localStorage.setItem(DRIVE_FLAG,"1");
+    syncNow(true);
+  }catch(e){
+    syncStatus("Conectarea nu a reușit sau a fost anulată.");
+  }
 }
-function syncUseCode(){
-  const inp=document.getElementById("syncCodeIn");
-  const code=(inp.value||"").trim().toLowerCase();
-  if(!/^[0-9a-f]{20,64}$/.test(code)){ syncStatus("Codul nu e valid. Copiază-l exact de pe celălalt dispozitiv."); return; }
-  const c=codesLoad(); c[playerName()]=code; codesSave(c);
-  inp.value="";
-  syncShowCode();
-  syncNow();
+function syncDisconnect(){
+  localStorage.removeItem(DRIVE_FLAG);
+  driveToken="";
+  syncStatus("Deconectat. Progresul rămâne doar pe dispozitivul acesta.");
+}
+function syncShowStatus(){
+  if(!GOOGLE_CLIENT_ID) syncStatus("Sincronizarea nu e activată încă (lipsește ID-ul clientului Google).");
+  else if(localStorage.getItem(DRIVE_FLAG)) syncStatus("Conectat la Google Drive: progresul se sincronizează automat.");
+  else syncStatus("Neconectat. Apasă „Conectează-te cu Google”.");
 }
 function openSettings(){
   renderThemeGrid();
   renderLangSelect();
   playersFill();
-  syncShowCode();
+  syncShowStatus();
   document.getElementById("settingsOverlay").classList.add("show");
 }
 function closeSettings(){
@@ -8693,11 +8748,11 @@ function initSettings(){
     document.getElementById("playerAddBtn").addEventListener("click",playerAdd);
     document.getElementById("playerDelBtn").addEventListener("click",playerDelete);
   }
-  document.getElementById("syncCopyBtn").addEventListener("click",syncCopy);
-  document.getElementById("syncUseBtn").addEventListener("click",syncUseCode);
-  document.getElementById("syncNowBtn").addEventListener("click",syncNow);
+  document.getElementById("syncConnectBtn").addEventListener("click",syncConnect);
+  document.getElementById("syncNowBtn").addEventListener("click",()=>syncNow(true));
+  document.getElementById("syncOffBtn").addEventListener("click",syncDisconnect);
   document.addEventListener("visibilitychange",()=>{ if(document.visibilityState==="visible") syncSoon(); });
-  if(SYNC_CONFIG) setTimeout(syncNow,1500);
+  if(GOOGLE_CLIENT_ID && localStorage.getItem(DRIVE_FLAG)) setTimeout(()=>syncNow(false),1500);
   document.getElementById("settingsOverlay").addEventListener("click",(e)=>{
     if(e.target.id==="settingsOverlay") closeSettings();
   });
