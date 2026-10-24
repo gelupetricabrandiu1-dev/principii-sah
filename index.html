@@ -867,7 +867,8 @@ button.btn.color-pick-btn:hover{background:var(--accent-soft); filter:none;}
     </div>
   </div>
   <div class="pagetabs" id="pagetabs">
-    <button class="pagetab active" data-page="1" type="button">Principii de bază<span class="count">35</span></button>
+    <button class="pagetab active" data-page="9" type="button">Deschideri<span class="count">69</span></button>
+    <button class="pagetab" data-page="1" type="button">Principii de bază<span class="count">35</span></button>
     <button class="pagetab" data-page="2" type="button">Principii avansate<span class="count">16</span></button>
     <button class="pagetab" data-page="3" type="button">Tactică și strategie<span class="count">15</span></button>
     <button class="pagetab" data-page="4" type="button">Motive și finaluri<span class="count">15</span></button>
@@ -875,7 +876,6 @@ button.btn.color-pick-btn:hover{background:var(--accent-soft); filter:none;}
     <button class="pagetab" data-page="6" type="button">Tactici de capturare<span class="count">900</span></button>
     <button class="pagetab" data-page="7" type="button">Joc live vs. calculator</button>
     <button class="pagetab" data-page="8" type="button">Capcane din deschideri<span class="count">174</span></button>
-    <button class="pagetab" data-page="9" type="button">Deschideri<span class="count">69</span></button>
   </div>
 
   <div class="levelrow" id="levelrow">
@@ -2930,7 +2930,7 @@ let locked=false;
 let completed=new Set();
 let difficulty="beginner";
 let currentData=null;
-let currentPage=1;
+let currentPage=9;
 let lineActive=false;
 let lineIndex=0;
 const PRINCIPLES_PAGE8 = [
@@ -3407,8 +3407,7 @@ function loadProgress(){
     if(raw){ completed=new Set(JSON.parse(raw)); }
     const lvl=localStorage.getItem("sah-principii-level");
     if(lvl==="advanced"||lvl==="beginner"){ difficulty=lvl; }
-    const pg=localStorage.getItem("sah-principii-page");
-    if(pg==="1"||pg==="2"||pg==="3"||pg==="4"||pg==="5"||pg==="6"||pg==="8"||pg==="9"){ currentPage=Number(pg); }
+    /* the app always opens on "Deschideri" (the last visited page is no longer restored) */
   }catch(e){}
   loadGameLevel();
   loadElo();
@@ -7957,10 +7956,10 @@ function applyLanguage(){
   const saveStatusEl=document.getElementById("saveStatus");
   if(saveStatusEl) saveStatusEl.textContent=t("saveStatus");
   const tabs=document.querySelectorAll(".pagetab");
-  const tabKeys=["tabBase","tabAdvanced","tabTactics","tabEndgames","tabDefense","tabCaptures","tabLive","tabTraps","tabOpenings"];
-  tabs.forEach((btn,i)=>{
+  const tabKeys={1:"tabBase",2:"tabAdvanced",3:"tabTactics",4:"tabEndgames",5:"tabDefense",6:"tabCaptures",7:"tabLive",8:"tabTraps",9:"tabOpenings"};
+  tabs.forEach(btn=>{
     const countSpan=btn.querySelector(".count");
-    btn.textContent=t(tabKeys[i]);
+    btn.textContent=t(tabKeys[btn.dataset.page]);
     if(countSpan) btn.appendChild(countSpan);
   });
   const diffBtns=document.querySelectorAll(".diff-btn");
