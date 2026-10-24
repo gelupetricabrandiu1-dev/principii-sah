@@ -627,7 +627,7 @@ button.btn:disabled{opacity:.45; cursor:default;}
   #openingsContainer .content-card{gap:10px; padding:14px; order:-1;}
   #openingsContainer .open-name{display:block; font-size:1rem; font-weight:700; line-height:1.3; text-align:center; color:var(--text);}
   /* phone: the game type sits in a fixed bottom bar, like the tabs of the Pontaj app */
-  #openingsContainer .open-play-row{position:fixed; left:0; right:0; bottom:0; z-index:40; margin:0; display:grid; grid-template-columns:1fr 1fr; gap:8px; padding:8px 10px calc(8px + env(safe-area-inset-bottom,0px)); background:var(--surface); border-top:1px solid var(--border); box-shadow:0 -4px 16px rgba(0,0,0,.06);}
+  #openingsContainer .open-play-row{position:fixed; left:0; right:0; bottom:0; z-index:40; margin:0; display:grid; grid-template-columns:1.1fr .9fr 1fr; gap:6px; padding:8px 10px calc(8px + env(safe-area-inset-bottom,0px)); background:var(--surface); border-top:1px solid var(--border); box-shadow:0 -4px 16px rgba(0,0,0,.06);}
   #openingsContainer .open-play-row .btn,
   #openingsContainer .open-play-row select{min-height:52px; border-radius:12px; font-size:.95rem; font-weight:600; text-align:center;}
   #openingsContainer .open-play-row .btn{padding:6px 4px; line-height:1.15;}
@@ -720,6 +720,17 @@ button.btn.color-pick-btn:hover{background:var(--accent-soft); filter:none;}
 .open-restart:active{transform:scale(.96);}
 .open-restart[hidden]{display:none;}
 .open-restart.secondary{background:var(--surface-2); color:var(--accent); box-shadow:inset 0 0 0 2px var(--accent);}
+.open-tip{position:absolute; top:8px; left:50%; transform:translateX(-50%); z-index:15; max-width:calc(100% - 16px); padding:8px 14px; border-radius:999px; font-family:'Public Sans',sans-serif; font-size:clamp(.78rem,2.6cqw,.95rem); font-weight:700; line-height:1.25; text-align:center; pointer-events:none; box-shadow:0 4px 14px rgba(0,0,0,.25);}
+.open-tip[hidden]{display:none;}
+.open-tip.bad{background:var(--bad); color:#fff;}
+.open-tip.ok{background:var(--good); color:#fff;}
+.open-tip.hint{background:var(--accent); color:var(--on-accent);}
+.board .sq.hl-good,.board .sq.dark.hl-good{background:var(--good-soft) !important; box-shadow:inset 0 0 0 4px var(--good); z-index:1;}
+.board .sq.hl-bad,.board .sq.dark.hl-bad{background:var(--bad-soft) !important; box-shadow:inset 0 0 0 4px var(--bad); z-index:1;}
+@media (max-width:760px){
+  #openingsContainer .open-play-row .btn,
+  #openingsContainer .open-play-row select{font-size:.85rem;}
+}
 .open-end-note{max-width:260px; font-size:.85rem; font-weight:600; color:var(--text-dim); line-height:1.3;}
 .open-end-btns{display:flex; flex-wrap:wrap; justify-content:center; gap:10px;}
 @media (prefers-reduced-motion: no-preference){
@@ -804,7 +815,7 @@ button.btn.color-pick-btn:hover{background:var(--accent-soft); filter:none;}
   body.desk-board #openingsContainer.show{grid-template-columns:1fr;}
   body.desk-board #openFs{display:none;}
   body.desk-board .board-card .actions .btn{flex:1 1 0;}
-  body.desk-board .open-play-row{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
+  body.desk-board .open-play-row{display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px;}
   body.desk-board .open-play-row .btn,
   body.desk-board .open-play-row select{min-height:52px; border-radius:14px; font-weight:600;}
 }
@@ -991,6 +1002,7 @@ button.btn.color-pick-btn:hover{background:var(--accent-soft); filter:none;}
     <div class="board-card">
       <div class="board-outer" style="max-width:420px;">
         <div class="board" id="openBoard"></div>
+        <div class="open-tip" id="openTip" hidden></div>
         <div class="open-end" id="openEnd" hidden>
           <div class="open-end-title" id="openEndTitle"></div>
           <div class="open-end-note" id="openEndNote">Repetarea se numără doar când joci tu linia.</div>
@@ -1008,6 +1020,7 @@ button.btn.color-pick-btn:hover{background:var(--accent-soft); filter:none;}
       <div class="open-result" id="openResult"></div>
       <div class="open-play-row">
         <button class="btn" id="openMode" type="button">▶ Joacă linia</button>
+        <button class="btn hint-btn" id="openHint" type="button" title="Arată următoarea mutare">💡 Indiciu</button>
         <select class="lang-select" id="openSide" aria-label="Joc cu">
           <option value="w">Joc cu Albul</option>
           <option value="b">Joc cu Negrul</option>
@@ -5736,7 +5749,7 @@ function openingsRender(){
   paintPieces(openBoardEl,g.board());
   openBoardEl.classList.toggle("flipped", openUserSide==="b");
   animateMoveOn(openBoardEl, last?last.from:null, last?last.to:null, !!(last&&last.captured), openIdx+":"+openStep);
-  openBoardEl.querySelectorAll(".sq").forEach(el=>el.classList.remove("lastmove","king-check","king-mate","selected","legal","legal-capture"));
+  openBoardEl.querySelectorAll(".sq").forEach(el=>el.classList.remove("lastmove","king-check","king-mate","selected","legal","legal-capture","hl-good","hl-bad"));
   if(last){
     openBoardEl.querySelector('.sq[data-sq="'+last.from+'"]').classList.add("lastmove");
     openBoardEl.querySelector('.sq[data-sq="'+last.to+'"]').classList.add("lastmove");
@@ -5803,6 +5816,7 @@ function openingsRender(){
     }
   }
   openingsRepsShow();
+  openingsApplyTip();
   openingsSaveState();
 }
 /* repetări, salvate pe acest dispozitiv:
@@ -5871,8 +5885,37 @@ function openingsEvidence(){
     box.appendChild(b);
   });
 }
+/* a short message on the board (wrong move, hint) with the squares it refers to */
+let openTip=null;
+function openingsApplyTip(){
+  openBoardEl.querySelectorAll(".sq.hl-good,.sq.hl-bad").forEach(el=>el.classList.remove("hl-good","hl-bad"));
+  const box=document.getElementById("openTip");
+  if(!openTip){ if(box) box.hidden=true; return; }
+  (openTip.good||[]).forEach(s=>{ const el=openBoardEl.querySelector('.sq[data-sq="'+s+'"]'); if(el) el.classList.add("hl-good"); });
+  (openTip.bad||[]).forEach(s=>{ const el=openBoardEl.querySelector('.sq[data-sq="'+s+'"]'); if(el) el.classList.add("hl-bad"); });
+  if(box){
+    box.textContent=openTip.text;
+    box.className="open-tip "+openTip.kind;
+    box.hidden=false;
+  }
+}
+/* 💡 Indiciu: first the piece to move, pressed again also the square it goes to */
+function openingsHint(){
+  if(openStartPrompt){ openStartPrompt=false; openingsRender(); }
+  const e=OPENINGS_DATA[openIdx];
+  if(openStep>=e.moves.length){ openTip={kind:"hint", text:"Linia s-a terminat"}; openingsApplyTip(); return; }
+  const {g}=openingsPosition();
+  if(openMode==="play" && g.turn()!==openUserSide){ openTip={kind:"hint", text:"Așteaptă mutarea adversarului"}; openingsApplyTip(); return; }
+  const u=e.moves[openStep], from=u.slice(0,2), to=u.slice(2,4);
+  const second=openMode!=="play" || (openTip && openTip.kind==="hint" && openTip.level===1);
+  openTip=second
+    ? {kind:"hint", level:2, text:"💡 "+(openMode==="play"?"Mutarea: ":"Următoarea mutare: ")+e.sans[openStep], good:[from,to]}
+    : {kind:"hint", level:1, text:"💡 Mută piesa marcată (apasă din nou pentru căsuță)", good:[from]};
+  openingsApplyTip();
+}
 function openingsSetStep(s){
   openStartPrompt=false;
+  openTip=null;
   openSel=null;
   const prev=openStep;
   openStep=Math.max(0,Math.min(s,OPENINGS_DATA[openIdx].moves.length));
@@ -5933,9 +5976,13 @@ function openingsBoardClick(ev){
       if(hit){
         openingsMsg("Corect ✓","ok");
         openingsSetStep(openStep+1);
+        if(openStep<e.moves.length){ openTip={kind:"ok", text:"✓ Corect"}; openingsApplyTip(); }
       } else {
         openingsMsg("Nu este mutarea din linie. Mutarea corectă era "+e.sans[openStep]+".","bad");
+        /* on the board: the square you tried in red, the right move in green */
+        openTip={kind:"bad", text:"✗ Nu e mutarea din linie · corect: "+e.sans[openStep], good:[want.slice(0,2),want.slice(2,4)], bad:[sq]};
         openingsMarkSel(g);
+        openingsApplyTip();
       }
       return;
     }
@@ -5997,6 +6044,7 @@ function openingsEnter(){
     });
     document.getElementById("openEndPlay").addEventListener("click",()=>openingsSetMode("play"));
     document.getElementById("openContinue").addEventListener("click",()=>{ openStartPrompt=false; openingsRender(); });
+    document.getElementById("openHint").addEventListener("click",openingsHint);
     document.getElementById("openFilterBtn").addEventListener("click",(ev)=>{
       const open=document.getElementById("openTopbar").classList.toggle("filters-open");
       ev.currentTarget.setAttribute("aria-expanded",open?"true":"false");
