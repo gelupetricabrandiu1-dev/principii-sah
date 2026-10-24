@@ -710,6 +710,9 @@ button.btn.color-pick-btn:hover{background:var(--accent-soft); filter:none;}
 .open-rate-btn.minus.on{background:var(--bad); color:#fff;}
 .open-pick-row select.rate-plus, .lang-select option.rate-plus{color:var(--good);}
 .open-pick-row select.rate-minus, .lang-select option.rate-minus{color:var(--bad);}
+.player-box{display:flex; flex-direction:column; gap:10px; width:100%;}
+.player-add{display:flex; flex-direction:column; gap:8px;}
+.player-add input[type=text]{padding:10px 12px; border-radius:12px; border:1px solid var(--border); background:var(--surface-2); color:var(--text); font-family:inherit; font-size:.95rem;}
 #openingsContainer .open-name::before{content:"📖 ";}
 .open-pick-row{display:flex; gap:8px;}
 .open-pick-row select{flex:1 1 auto; min-width:0;}
@@ -935,6 +938,18 @@ button.btn.color-pick-btn:hover{background:var(--accent-soft); filter:none;}
       <div class="settings-row">
         <label id="langLabel">Limbă</label>
         <select class="lang-select" id="langSelect"></select>
+      </div>
+      <div class="settings-row">
+        <label id="playerLabel">Jucător</label>
+        <div class="player-box">
+          <select class="lang-select" id="playerSelect" aria-label="Jucătorul activ"></select>
+          <div class="player-add">
+            <input type="text" id="playerName" maxlength="20" placeholder="Nume jucător nou">
+            <label class="open-toggle"><input type="checkbox" id="playerCopy" checked> Copiază progresul implicit în jucătorul nou</label>
+            <button class="btn" id="playerAddBtn" type="button">Adaugă jucătorul</button>
+          </div>
+          <button class="btn" id="playerDelBtn" type="button">Șterge jucătorul selectat</button>
+        </div>
       </div>
       <div class="settings-row">
         <label id="volumeLabel">Volum</label>
@@ -1169,6 +1184,14 @@ button.btn.color-pick-btn:hover{background:var(--accent-soft); filter:none;}
 </div>
 
 <script>
+/* jucătorii: fiecare jucător își are progresul sub cheia "cheie@jucător"; progresul de până acum rămâne sub cheile simple
+   (jucătorul implicit). Setările de dispozitiv (tema, limba, volumul, mărimea tablei) rămân comune. */
+const PLAYER_KEY="principii-sah-jucator", PLAYERS_KEY="principii-sah-jucatori";
+const DEVICE_KEYS=["sah-principii-theme","sah-principii-lang","sah-design-v2","sah-principii-volume","principii-sah-marime-tabla","sah-principii-page",PLAYER_KEY,PLAYERS_KEY];
+function playerName(){ try{ return localStorage.getItem(PLAYER_KEY)||""; }catch(e){ return ""; } }
+function ppKey(k){ const p=playerName(); return (!p||DEVICE_KEYS.indexOf(k)>=0)?k:k+"@"+p; }
+function ppGet(k){ return localStorage.getItem(ppKey(k)); }
+function ppSet(k,v){ localStorage.setItem(ppKey(k),v); }
 const PRINCIPLES = [
 {id:1,title:"Controlează centrul tăblii",fen:"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",turn:"w",correct:[["e2","e4"],["d2","d4"]],
 text:"Pătratele centrale (d4, d5, e4, e5) sunt cele mai importante de pe tablă: piesele plasate spre centru controlează mai multe câmpuri și au mai multă mobilitate, în timp ce cele de la margine influențează mult mai puțin jocul. De aceea, primele mutări bune ocupă sau presează centrul.",
@@ -2944,12 +2967,12 @@ function playMoveSounds(chessInst){
 }
 function loadVolume(){
   try{
-    const v=localStorage.getItem("sah-principii-volume");
+    const v=ppGet("sah-principii-volume");
     if(v!==null){ masterVolume=Math.max(0,Math.min(1,Number(v))); }
   }catch(e){}
 }
 function saveVolume(){
-  try{ localStorage.setItem("sah-principii-volume",String(masterVolume)); }catch(e){}
+  try{ ppSet("sah-principii-volume",String(masterVolume)); }catch(e){}
 }
 
 function buildBoardDom(container,opts){
@@ -3436,10 +3459,10 @@ function fitBoardDesktop(){
   if(lb) lb.textContent=Math.round(boardScale*100)+"%";
 }
 let boardScale=1;
-try{ const v=parseFloat(localStorage.getItem("principii-sah-marime-tabla")); if(v>=0.5 && v<=1.6) boardScale=v; }catch(e){}
+try{ const v=parseFloat(ppGet("principii-sah-marime-tabla")); if(v>=0.5 && v<=1.6) boardScale=v; }catch(e){}
 function boardScaleBy(d){
   boardScale=Math.round(Math.max(0.5,Math.min(1.6,boardScale+d))*100)/100;
-  try{ localStorage.setItem("principii-sah-marime-tabla",String(boardScale)); }catch(e){}
+  try{ ppSet("principii-sah-marime-tabla",String(boardScale)); }catch(e){}
   fitBoardDesktop();
 }
 function deskLayoutInit(){
@@ -3550,9 +3573,9 @@ function applyPageVisibility(){
 
 function loadProgress(){
   try{
-    const raw=localStorage.getItem("sah-principii-progress");
+    const raw=ppGet("sah-principii-progress");
     if(raw){ completed=new Set(JSON.parse(raw)); }
-    const lvl=localStorage.getItem("sah-principii-level");
+    const lvl=ppGet("sah-principii-level");
     if(lvl==="advanced"||lvl==="beginner"){ difficulty=lvl; }
     /* the app always opens on "Deschideri" (the last visited page is no longer restored) */
   }catch(e){}
@@ -3562,13 +3585,13 @@ function loadProgress(){
   loadPage6Filter();
 }
 function savePage(){
-  try{ localStorage.setItem("sah-principii-page",String(currentPage)); }catch(e){}
+  try{ ppSet("sah-principii-page",String(currentPage)); }catch(e){}
 }
 function saveProgress(){
-  try{ localStorage.setItem("sah-principii-progress",JSON.stringify([...completed])); }catch(e){}
+  try{ ppSet("sah-principii-progress",JSON.stringify([...completed])); }catch(e){}
 }
 function saveLevel(){
-  try{ localStorage.setItem("sah-principii-level",difficulty); }catch(e){}
+  try{ ppSet("sah-principii-level",difficulty); }catch(e){}
 }
 function syncDifficultyButtons(){
   document.querySelectorAll(".diff-btn").forEach(b=>{
@@ -4216,28 +4239,28 @@ const LEVEL_ELO=[400,600,750,900,1050,1200,1350,1500,1650,1800,1950,2100,2250,24
 let gameLevel=8;
 function loadGameLevel(){
   try{
-    const lvl=Number(localStorage.getItem("sah-principii-gamelevel"));
+    const lvl=Number(ppGet("sah-principii-gamelevel"));
     if(lvl>=1 && lvl<=15) gameLevel=lvl;
   }catch(e){}
 }
 function saveGameLevel(){
-  try{ localStorage.setItem("sah-principii-gamelevel",String(gameLevel)); }catch(e){}
+  try{ ppSet("sah-principii-gamelevel",String(gameLevel)); }catch(e){}
 }
 
 /* ---- page 6 technique filter ---- */
 function loadPage6Filter(){
   try{
-    const v=localStorage.getItem("sah-principii-page6-filter");
+    const v=ppGet("sah-principii-page6-filter");
     if(v==="all"||PAGE6_THEMES.some(t=>t.key===v)) page6ThemeFilter=v;
-    const v8=localStorage.getItem("sah-principii-page8-filter");
+    const v8=ppGet("sah-principii-page8-filter");
     if(v8==="all"||PAGE8_THEMES.some(t=>t.key===v8)) page8ThemeFilter=v8;
   }catch(e){}
 }
 function savePage6Filter(){
-  try{ localStorage.setItem("sah-principii-page6-filter",page6ThemeFilter); }catch(e){}
+  try{ ppSet("sah-principii-page6-filter",page6ThemeFilter); }catch(e){}
 }
 function savePage8Filter(){
-  try{ localStorage.setItem("sah-principii-page8-filter",page8ThemeFilter); }catch(e){}
+  try{ ppSet("sah-principii-page8-filter",page8ThemeFilter); }catch(e){}
 }
 function renderTechniqueFilterSelect(){
   const sel=document.getElementById("techniqueFilterSelect");
@@ -4257,16 +4280,16 @@ function renderTechniqueFilterSelect(){
 /* ---- ELO rating ---- */
 function loadElo(){
   try{
-    const v=Number(localStorage.getItem("sah-principii-elo"));
+    const v=Number(ppGet("sah-principii-elo"));
     if(v>=100 && v<=3000) userElo=v;
-    const raw=localStorage.getItem("sah-principii-elo-history");
+    const raw=ppGet("sah-principii-elo-history");
     if(raw){ const arr=JSON.parse(raw); if(Array.isArray(arr)) eloHistory=arr; }
   }catch(e){}
 }
 function saveElo(){
   try{
-    localStorage.setItem("sah-principii-elo",String(userElo));
-    localStorage.setItem("sah-principii-elo-history",JSON.stringify(eloHistory));
+    ppSet("sah-principii-elo",String(userElo));
+    ppSet("sah-principii-elo-history",JSON.stringify(eloHistory));
   }catch(e){}
 }
 function recordGameResult(score){
@@ -5758,7 +5781,7 @@ function openingsEndLabel(e){
 /* difficulty: complete lines (mate or queen captured) grouped by length; theory lines have no level */
 const OPEN_LEVELS={usor:[1,8], mediu:[9,12], greu:[13,999]};
 let openLevel="all";
-try{ const lv=localStorage.getItem("principii-sah-deschideri-nivel"); if(lv==="all"||OPEN_LEVELS[lv]) openLevel=lv; }catch(e){}
+try{ const lv=ppGet("principii-sah-deschideri-nivel"); if(lv==="all"||OPEN_LEVELS[lv]) openLevel=lv; }catch(e){}
 function openingsInLevel(e){
   if(openLevel==="all") return true;
   if(e.end==="theory") return false;
@@ -5767,7 +5790,7 @@ function openingsInLevel(e){
 }
 function openingsSetLevel(lv){
   openLevel=lv;
-  try{ localStorage.setItem("principii-sah-deschideri-nivel",lv); }catch(e){}
+  try{ ppSet("principii-sah-deschideri-nivel",lv); }catch(e){}
   document.querySelectorAll("#openLevel button").forEach(b=>b.classList.toggle("active",b.dataset.lv===lv));
   openingsFillSelect();
   /* the current line is not in this level: start with its shortest line */
@@ -5928,10 +5951,10 @@ const REPS_KEY="principii-sah-repetari";
 const VIEWS_KEY="principii-sah-parcurgeri";
 let openViewOk=false;
 function repsLoad(key){
-  try{ return JSON.parse(localStorage.getItem(key||REPS_KEY)||"{}")||{}; }catch(e){ return {}; }
+  try{ return JSON.parse(ppGet(key||REPS_KEY)||"{}")||{}; }catch(e){ return {}; }
 }
 function repsSave(o,key){
-  try{ localStorage.setItem(key||REPS_KEY,JSON.stringify(o)); }catch(e){}
+  try{ ppSet(key||REPS_KEY,JSON.stringify(o)); }catch(e){}
 }
 function openingsKey(i){ return OPENINGS_DATA[i].moves.join(" "); }
 /* "o dată", "de 2 ori", "de 20 de ori" */
@@ -5951,12 +5974,12 @@ function openingsRepsShow(){
 }
 /* părerea ta despre fiecare deschidere: „+” folositoare, „−” nefolositoare (apăsată a doua oară se șterge) */
 const RATE_KEY="principii-sah-folosire";
-function rateLoad(){ try{ return JSON.parse(localStorage.getItem(RATE_KEY)||"{}")||{}; }catch(e){ return {}; } }
+function rateLoad(){ try{ return JSON.parse(ppGet(RATE_KEY)||"{}")||{}; }catch(e){ return {}; } }
 function openingsRate(){ return rateLoad()[openingsKey(openIdx)]||""; }
 function openingsSetRate(v){
   const o=rateLoad(), k=openingsKey(openIdx);
   if(o[k]===v) delete o[k]; else o[k]=v;
-  try{ localStorage.setItem(RATE_KEY,JSON.stringify(o)); }catch(e){}
+  try{ ppSet(RATE_KEY,JSON.stringify(o)); }catch(e){}
   openingsShowRate();
   openingsFillSelect();
 }
@@ -6117,11 +6140,11 @@ function openingsBoardClick(ev){
 /* where you left off (line, move, mode, colour) is kept on this device and restored when the app opens again */
 const OPEN_STATE_KEY="principii-sah-deschideri-stare";
 function openingsSaveState(){
-  try{ localStorage.setItem(OPEN_STATE_KEY,JSON.stringify({k:openingsKey(openIdx), s:openStep, m:openMode, side:openUserSide})); }catch(e){}
+  try{ ppSet(OPEN_STATE_KEY,JSON.stringify({k:openingsKey(openIdx), s:openStep, m:openMode, side:openUserSide})); }catch(e){}
 }
 function openingsRestoreState(){
   let st=null;
-  try{ st=JSON.parse(localStorage.getItem(OPEN_STATE_KEY)||"null"); }catch(e){}
+  try{ st=JSON.parse(ppGet(OPEN_STATE_KEY)||"null"); }catch(e){}
   if(!st || !st.k) return;
   const i=OPENINGS_DATA.findIndex(e=>e.moves.join(" ")===st.k);
   if(i<0) return;
@@ -6157,9 +6180,9 @@ function openingsEnter(){
     document.getElementById("openSearch").addEventListener("input",openingsFillSelect);
     document.getElementById("openAll").addEventListener("change",openingsFillSelect);
     const todoBox=document.getElementById("openTodo");
-    try{ todoBox.checked=localStorage.getItem("principii-sah-doar-nejucate")==="1"; }catch(e){}
+    try{ todoBox.checked=ppGet("principii-sah-doar-nejucate")==="1"; }catch(e){}
     todoBox.addEventListener("change",()=>{
-      try{ localStorage.setItem("principii-sah-doar-nejucate",todoBox.checked?"1":"0"); }catch(e){}
+      try{ ppSet("principii-sah-doar-nejucate",todoBox.checked?"1":"0"); }catch(e){}
       openingsFillSelect();
     });
     document.querySelectorAll("#openRate .open-rate-btn").forEach(b=>b.addEventListener("click",()=>openingsSetRate(b.dataset.v)));
@@ -8290,20 +8313,20 @@ let currentLang="ro";
 function t(key){ return (I18N[currentLang]&&I18N[currentLang][key])||I18N.ro[key]||key; }
 function loadSettings(){
   try{
-    const th=localStorage.getItem("sah-principii-theme");
+    const th=ppGet("sah-principii-theme");
     /* the new design starts on the blue theme once; afterwards the choice from Settings is kept */
-    if(!localStorage.getItem("sah-design-v2")){
-      localStorage.setItem("sah-design-v2","1");
-      localStorage.setItem("sah-principii-theme",currentTheme);
+    if(!ppGet("sah-design-v2")){
+      ppSet("sah-design-v2","1");
+      ppSet("sah-principii-theme",currentTheme);
     } else if(th && THEMES.some(x=>x.id===th)) currentTheme=th;
-    const lg=localStorage.getItem("sah-principii-lang");
+    const lg=ppGet("sah-principii-lang");
     if(lg && LANGUAGES.some(x=>x.id===lg)) currentLang=lg;
   }catch(e){}
 }
 function saveSettings(){
   try{
-    localStorage.setItem("sah-principii-theme",currentTheme);
-    localStorage.setItem("sah-principii-lang",currentLang);
+    ppSet("sah-principii-theme",currentTheme);
+    ppSet("sah-principii-lang",currentLang);
   }catch(e){}
 }
 function applyTheme(){
@@ -8457,9 +8480,59 @@ function renderLangSelect(){
     saveSettings();
   };
 }
+/* jucătorii: lista se ține pe acest dispozitiv; la schimbarea jucătorului pagina se reîncarcă, ca să se citească progresul lui */
+function playersLoad(){ try{ return JSON.parse(localStorage.getItem(PLAYERS_KEY)||"[]")||[]; }catch(e){ return []; } }
+function playersSave(list){ try{ localStorage.setItem(PLAYERS_KEY,JSON.stringify(list)); }catch(e){} }
+function playerSwitch(name){
+  try{ localStorage.setItem(PLAYER_KEY,name); }catch(e){}
+  location.reload();
+}
+function playersFill(){
+  const sel=document.getElementById("playerSelect");
+  if(!sel) return;
+  const cur=playerName(), names=playersLoad();
+  sel.innerHTML="";
+  const first=document.createElement("option");
+  first.value=""; first.textContent="Implicit (progresul de până acum)";
+  sel.appendChild(first);
+  names.forEach(n=>{ const o=document.createElement("option"); o.value=n; o.textContent=n; sel.appendChild(o); });
+  sel.value=names.indexOf(cur)>=0?cur:"";
+}
+/* progresul implicit (cheile simple) se copiază la jucătorul nou, ca să nu rămână gol */
+function playerCopyDefault(name){
+  const keys=[];
+  for(let i=0;i<localStorage.length;i++) keys.push(localStorage.key(i));
+  keys.forEach(k=>{
+    if(!k || k.indexOf("@")>=0 || DEVICE_KEYS.indexOf(k)>=0) return;
+    if(k.indexOf("sah-principii-")!==0 && k.indexOf("principii-sah-")!==0) return;
+    const target=k+"@"+name;
+    if(localStorage.getItem(target)===null) localStorage.setItem(target,localStorage.getItem(k));
+  });
+}
+function playerAdd(){
+  const inp=document.getElementById("playerName");
+  const name=(inp.value||"").trim().slice(0,20);
+  if(!name) return;
+  const names=playersLoad();
+  if(names.indexOf(name)>=0){ playerSwitch(name); return; }
+  if(document.getElementById("playerCopy").checked) playerCopyDefault(name);
+  playersSave([...names,name]);
+  playerSwitch(name);
+}
+function playerDelete(){
+  const name=document.getElementById("playerSelect").value;
+  if(!name){ alert("Jucătorul implicit nu se poate șterge."); return; }
+  if(!confirm("Ștergi jucătorul "+name+" și tot progresul lui? Nu se poate anula.")) return;
+  const suffix="@"+name, keys=[];
+  for(let i=0;i<localStorage.length;i++) keys.push(localStorage.key(i));
+  keys.forEach(k=>{ if(k && k.slice(-suffix.length)===suffix) localStorage.removeItem(k); });
+  playersSave(playersLoad().filter(n=>n!==name));
+  if(playerName()===name) playerSwitch(""); else playersFill();
+}
 function openSettings(){
   renderThemeGrid();
   renderLangSelect();
+  playersFill();
   document.getElementById("settingsOverlay").classList.add("show");
 }
 function closeSettings(){
@@ -8480,6 +8553,12 @@ function initSettings(){
   document.getElementById("settingsBtn").addEventListener("click",openSettings);
   document.getElementById("settingsCloseX").addEventListener("click",closeSettings);
   document.getElementById("settingsCloseBtn").addEventListener("click",closeSettings);
+  const playerSel=document.getElementById("playerSelect");
+  if(playerSel){
+    playerSel.addEventListener("change",()=>playerSwitch(playerSel.value));
+    document.getElementById("playerAddBtn").addEventListener("click",playerAdd);
+    document.getElementById("playerDelBtn").addEventListener("click",playerDelete);
+  }
   document.getElementById("settingsOverlay").addEventListener("click",(e)=>{
     if(e.target.id==="settingsOverlay") closeSettings();
   });
