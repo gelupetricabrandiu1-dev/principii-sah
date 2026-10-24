@@ -573,11 +573,19 @@ button.btn:disabled{opacity:.45; cursor:default;}
   .main .board-card > .actions .btn{flex:1 1 0; min-height:46px; padding:8px 4px; font-size:.82rem; line-height:1.15; white-space:normal;}
 }
 .open-fs{width:100%; margin-top:8px; min-height:44px;}
+.open-name{display:none;}
 @media (max-width:760px){
   #openingsContainer .content-card > div:first-child,
   #openingsContainer .content-card > p,
   #openingsContainer #openMoves{display:none;}
-  #openingsContainer .content-card{gap:10px; padding:14px;}
+  #openingsContainer .content-card{gap:10px; padding:14px; order:-1;}
+  #openingsContainer .open-name{display:block; font-size:1rem; font-weight:700; line-height:1.3; text-align:center; color:var(--text);}
+  /* phone: the game type sits in a fixed bottom bar, like the tabs of the Pontaj app */
+  #openingsContainer .open-play-row{position:fixed; left:0; right:0; bottom:0; z-index:40; margin:0; display:grid; grid-template-columns:1fr 1fr; gap:8px; padding:8px 10px calc(8px + env(safe-area-inset-bottom,0px)); background:var(--surface); border-top:1px solid var(--border); box-shadow:0 -4px 16px rgba(0,0,0,.06);}
+  #openingsContainer .open-play-row .btn,
+  #openingsContainer .open-play-row select{min-height:52px; border-radius:12px; font-size:.95rem; font-weight:600; text-align:center;}
+  #openingsContainer .open-play-row .btn{padding:6px 4px; line-height:1.15;}
+  #openingsContainer .open-play-row select{padding:6px 4px;}
 }
 .arrow-layer.arrow-flipped{transform:rotate(180deg);}
 @media (min-width:761px){
@@ -779,6 +787,7 @@ button.btn:disabled{opacity:.45; cursor:default;}
         <select class="lang-select" id="openLen" aria-label="Număr de mutări"></select>
       </div>
       <select class="lang-select" id="openingSelect"></select>
+      <div class="open-name" id="openName"></div>
       <div class="open-moves" id="openMoves"></div>
     </div>
   </div>
@@ -5343,6 +5352,9 @@ function openingsRender(){
     if(el) el.classList.add(g.in_checkmate()?"king-mate":"king-check");
   }
   const total=e.moves.length;
+  const pick=document.getElementById("openingSelect");
+  const nm=document.getElementById("openName");
+  if(nm&&pick) nm.textContent=pick.selectedIndex>=0?pick.options[pick.selectedIndex].textContent:"";
   document.getElementById("openStepLabel").textContent=openStep+" / "+total;
   document.getElementById("openTurnLabel").innerHTML="La mutare: <b>"+(g.turn()==="w"?"Alb":"Negru")+"</b>";
   const res=document.getElementById("openResult");
