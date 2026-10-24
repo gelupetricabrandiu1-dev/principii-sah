@@ -710,6 +710,18 @@ button.btn.color-pick-btn:hover{background:var(--accent-soft); filter:none;}
 .open-rate-btn.minus.on{background:var(--bad); color:#fff;}
 .open-pick-row select.rate-plus, .lang-select option.rate-plus{color:var(--good);}
 .open-pick-row select.rate-minus, .lang-select option.rate-minus{color:var(--bad);}
+.quiz-setup{display:flex; flex-direction:column; gap:10px; margin-top:4px;}
+.quiz-setup[hidden]{display:none;}
+.quiz-label{font-size:.8rem; color:var(--text-dim); font-weight:700; text-transform:uppercase; letter-spacing:.04em;}
+.quiz-chips{display:flex; flex-wrap:wrap; gap:8px;}
+.quiz-chip{padding:9px 16px; border-radius:999px; border:0; background:var(--surface-2); color:var(--text); font-family:inherit; font-size:.9rem; font-weight:600; cursor:pointer;}
+.quiz-chip.active{background:var(--accent); color:var(--on-accent);}
+.quiz-sum{font-size:.85rem; color:var(--text-dim); margin:0;}
+.quiz-stats{font-size:.9rem; margin-top:8px;}
+.quiz-stats h4{margin:12px 0 4px; font-size:.95rem;}
+.quiz-stats ol{margin:0; padding-left:20px; line-height:1.6;}
+#quizContainer .board-outer{max-width:min(100%,420px)!important; margin:0 auto;}
+@media (max-width:760px){ #quizContainer{grid-template-columns:1fr;} }
 .player-box{display:flex; flex-direction:column; gap:10px; width:100%;}
 .player-add{display:flex; flex-direction:column; gap:8px;}
 .player-box input[type=text]{padding:10px 12px; border-radius:12px; border:1px solid var(--border); background:var(--surface-2); color:var(--text); font-family:inherit; font-size:.95rem;}
@@ -1026,6 +1038,7 @@ button.btn.color-pick-btn:hover{background:var(--accent-soft); filter:none;}
     <button class="pagetab" data-page="6" type="button">Tactici de capturare<span class="count">900</span></button>
     <button class="pagetab" data-page="7" type="button">Joc live vs. calculator</button>
     <button class="pagetab" data-page="8" type="button">Capcane din deschideri<span class="count">174</span></button>
+    <button class="pagetab" data-page="10" type="button">Test deschideri</button>
   </div>
 
   <div class="levelrow" id="levelrow">
@@ -1143,6 +1156,65 @@ button.btn.color-pick-btn:hover{background:var(--accent-soft); filter:none;}
       </div>
       <div class="open-ev" id="openEv" hidden></div>
       <div class="open-moves" id="openMoves"></div>
+    </div>
+  </div>
+  <div class="game-wrap" id="quizContainer">
+    <div class="board-card">
+      <div class="board-outer" style="max-width:420px;">
+        <div class="board" id="quizBoard"></div>
+        <div class="open-end" id="quizEnd" hidden>
+          <div class="open-end-title" id="quizEndTitle"></div>
+          <div class="open-end-note" id="quizEndNote"></div>
+          <div class="open-end-btns">
+            <button class="open-restart" id="quizNextBtn" type="button">Următoarea →</button>
+          </div>
+        </div>
+      </div>
+      <div class="status-line">
+        <span id="quizProgress"></span>
+        <span id="quizScore"></span>
+      </div>
+      <div class="open-result" id="quizName"></div>
+      <div class="open-msg" id="quizMsg"></div>
+      <div class="actions">
+        <button class="btn" id="quizQuitBtn" type="button">■ Renunță la test</button>
+      </div>
+    </div>
+    <div class="content-card">
+      <div>
+        <div class="eyebrow">Test deschideri</div>
+        <h2 style="font-size:1.3rem;">Joacă deschiderea din memorie</h2>
+      </div>
+      <p style="margin:0;font-size:.85rem;color:var(--text-dim);line-height:1.5;">Primești o deschidere la întâmplare, fără nume. Joci tu mutările din memorie, iar adversarul le joacă pe ale lui. Numele apare la sfârșit. Statistica de mai jos arată ce știi bine și ce trebuie să exersezi.</p>
+      <div class="quiz-setup" id="quizSetup">
+        <div class="quiz-label">Nivel</div>
+        <div class="quiz-chips" id="quizLevelChips">
+          <button class="quiz-chip" type="button" data-lv="toate">Toate</button>
+          <button class="quiz-chip" type="button" data-lv="usor">Ușor</button>
+          <button class="quiz-chip" type="button" data-lv="mediu">Mediu</button>
+          <button class="quiz-chip" type="button" data-lv="greu">Greu</button>
+        </div>
+        <div class="quiz-label">Câte deschideri</div>
+        <div class="quiz-chips" id="quizCountChips">
+          <button class="quiz-chip" type="button" data-n="5">5</button>
+          <button class="quiz-chip" type="button" data-n="10">10</button>
+          <button class="quiz-chip" type="button" data-n="20">20</button>
+        </div>
+        <div class="quiz-label">Joci cu</div>
+        <div class="quiz-chips" id="quizSideChips">
+          <button class="quiz-chip" type="button" data-side="w">Albul</button>
+          <button class="quiz-chip" type="button" data-side="b">Negrul</button>
+        </div>
+        <div class="quiz-label">Ce testez</div>
+        <select class="lang-select" id="quizPool" aria-label="Ce testez">
+          <option value="toate">Toate din nivel</option>
+          <option value="exersat">Doar cele de exersat</option>
+          <option value="netestat">Doar cele netestate</option>
+        </select>
+        <div class="quiz-sum" id="quizPoolInfo"></div>
+        <button class="btn primary" id="quizStartBtn" type="button">▶ Începe testul</button>
+      </div>
+      <div class="quiz-stats" id="quizStats"></div>
     </div>
   </div>
   <div class="game-wrap" id="page5Container">
@@ -3411,7 +3483,7 @@ function buildPageSelect(){
   updateDiagToggle();
 }
 /* phone: page menu as large tiles */
-const PAGE_ICONS={1:"♙",2:"♗",3:"♘",4:"♖",5:"🛡️",6:"⚔️",7:"🖥️",8:"⚠️",9:"📖"};
+const PAGE_ICONS={1:"♙",2:"♗",3:"♘",4:"♖",5:"🛡️",6:"⚔️",7:"🖥️",8:"⚠️",9:"📖",10:"🎲"};
 function pageTabParts(b){
   const c=b.querySelector(".count");
   const name=c?b.textContent.slice(0,b.textContent.length-c.textContent.length).trim():b.textContent.trim();
@@ -3570,25 +3642,29 @@ function switchPage(pg){
   applyPageVisibility();
   if(pg===7){ ensureGameStarted(); }
   else if(pg===9){ openingsEnter(); }
+  else if(pg===10){ quizEnter(); }
   else { loadPrinciple(0); }
 }
 
 function applyPageVisibility(){
   const isGame=currentPage===7;
   const isOpen=currentPage===9;
+  const isQuiz=currentPage===10;
   const isDefense=currentPage===5;
   const isBulkTactics=currentPage===6||currentPage===8;
-  document.querySelector(".main").style.display=(isGame||isOpen)?"none":"grid";
+  document.querySelector(".main").style.display=(isGame||isOpen||isQuiz)?"none":"grid";
   document.getElementById("page5Container").classList.toggle("show",isGame);
-  document.getElementById("navstrip").style.display=(isGame||isOpen)?"none":"flex";
-  document.getElementById("levelrow").style.display=(isGame||isDefense||isBulkTactics||isOpen)?"none":"flex";
+  document.getElementById("navstrip").style.display=(isGame||isOpen||isQuiz)?"none":"flex";
+  document.getElementById("levelrow").style.display=(isGame||isDefense||isBulkTactics||isOpen||isQuiz)?"none":"flex";
   document.getElementById("techniqueFilterRow").style.display=isBulkTactics?"flex":"none";
   document.body.classList.toggle("game-page-active",isGame);
-  document.body.classList.toggle("open-page-active",isOpen);
-  document.getElementById("progress").style.display=(isGame||isOpen)?"none":"";
+  document.body.classList.toggle("open-page-active",isOpen||isQuiz);
+  document.getElementById("progress").style.display=(isGame||isOpen||isQuiz)?"none":"";
   document.getElementById("openingsContainer").classList.toggle("show",isOpen);
+  document.getElementById("quizContainer").classList.toggle("show",isQuiz);
   document.getElementById("openTopbar").style.display=isOpen?"":"none";
   if(!isOpen) openingsStop();
+  if(!isQuiz && quizReady) quizReset();
   renderTechniqueFilterSelect();
   setTimeout(fitBoardDesktop,0);
 }
@@ -6191,6 +6267,265 @@ function openingsShowPrompt(){
   openStartPrompt=true;
   openingsRender();
 }
+/* ===== Test deschideri: o deschidere la întâmplare, jucată din memorie (adversarul joacă pe ale lui).
+   Numele apare abia la sfârșit. Statistica (per jucător) arată ce știi bine și ce trebuie exersat. ===== */
+const QUIZ_KEY="principii-sah-test-deschideri";
+let quizLevelSel="toate", quizCountSel=10, quizUser="w", quizPoolSel="toate";
+let quizList=[], quizPos=0, quizG=null, quizStep=0, quizMistakes=0, quizOk=0, quizLast=null, quizSel=null, quizTimer=null, quizBusy=false;
+var quizReady=false;
+function quizLoadStats(){ try{ return JSON.parse(ppGet(QUIZ_KEY)||"{}")||{}; }catch(e){ return {}; } }
+function quizSaveStats(o){ try{ ppSet(QUIZ_KEY,JSON.stringify(o)); }catch(e){} }
+/* cunoscută bine: cel puțin 2 încercări, ultima fără greșeli și cel puțin 70% fără greșeli; de exersat: ultima cu greșeli sau sub 50% */
+function quizStatusOf(s){
+  if(!s || !s.n) return "netestată";
+  const r=s.p/s.n;
+  if(s.n>=2 && s.last===1 && r>=0.7) return "cunoscută";
+  if(s.last===0 || r<0.5) return "de exersat";
+  return "în progres";
+}
+function quizInLevel(e,lv){
+  if(lv==="toate") return true;
+  const n=Math.ceil(e.moves.length/2), r=OPEN_LEVELS[lv];
+  return n>=r[0] && n<=r[1];
+}
+function quizShuffle(a){
+  const b=a.slice();
+  for(let i=b.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); const t=b[i]; b[i]=b[j]; b[j]=t; }
+  return b;
+}
+function quizPool(){
+  const st=quizLoadStats();
+  return OPENINGS_DATA.map((e,i)=>i).filter(i=>{
+    const e=OPENINGS_DATA[i];
+    if(e.end==="theory" || !quizInLevel(e,quizLevelSel)) return false;
+    const stt=quizStatusOf(st[openingsKey(i)]);
+    if(quizPoolSel==="exersat") return stt==="de exersat";
+    if(quizPoolSel==="netestat") return stt==="netestată";
+    return true;
+  });
+}
+function quizPoolInfo(){
+  const n=quizPool().length, el=document.getElementById("quizPoolInfo");
+  if(el) el.textContent="În filtru sunt "+n+" deschideri"+(n<quizCountSel?" (mai puține decât ai cerut, se dau toate)":"")+".";
+}
+function quizSay(text,kind){
+  const m=document.getElementById("quizMsg");
+  if(!m) return;
+  m.textContent=text;
+  m.className="open-msg"+(kind?" "+kind:"");
+}
+function quizShowSetup(show){
+  const s=document.getElementById("quizSetup");
+  if(s) s.hidden=!show;
+}
+function quizMarkChips(){
+  const on=(sel,attr,val)=>document.querySelectorAll(sel+" button").forEach(b=>b.classList.toggle("active",String(b.dataset[attr])===String(val)));
+  on("#quizLevelChips","lv",quizLevelSel);
+  on("#quizCountChips","n",quizCountSel);
+  on("#quizSideChips","side",quizUser);
+}
+function quizRender(){
+  const b=document.getElementById("quizBoard");
+  paintPieces(b,quizG.board());
+  b.classList.toggle("flipped", quizUser==="b");
+  b.querySelectorAll(".sq").forEach(el=>el.classList.remove("lastmove","king-check","king-mate","selected","legal","legal-capture","hl-good","hl-bad"));
+  if(quizLast){
+    b.querySelector('.sq[data-sq="'+quizLast.from+'"]').classList.add("lastmove");
+    b.querySelector('.sq[data-sq="'+quizLast.to+'"]').classList.add("lastmove");
+  }
+  if(quizG.in_check()){
+    const k=findKingSquare(quizG,quizG.turn());
+    const el=k&&b.querySelector('.sq[data-sq="'+k+'"]');
+    if(el) el.classList.add(quizG.in_checkmate()?"king-mate":"king-check");
+  }
+  document.getElementById("quizProgress").textContent="Deschiderea "+(quizPos+1)+" din "+quizList.length;
+  document.getElementById("quizScore").textContent="Fără greșeli până acum: "+quizOk;
+}
+function quizMark(){
+  const b=document.getElementById("quizBoard");
+  b.querySelectorAll(".sq").forEach(el=>el.classList.remove("selected","legal","legal-capture"));
+  if(!quizSel) return;
+  const from=b.querySelector('.sq[data-sq="'+quizSel+'"]');
+  if(from) from.classList.add("selected");
+  quizG.moves({square:quizSel,verbose:true}).forEach(m=>{
+    const el=b.querySelector('.sq[data-sq="'+m.to+'"]');
+    if(el) el.classList.add(m.flags.indexOf("c")>=0?"legal-capture":"legal");
+  });
+}
+function quizApply(uci){
+  const m=quizG.move({from:uci.slice(0,2),to:uci.slice(2,4),promotion:uci.length>4?uci[4]:undefined});
+  quizLast={from:m.from,to:m.to};
+  quizStep++;
+  quizRender();
+}
+/* pasul următor: fie joacă adversarul (după o mică pauză), fie așteaptă mutarea ta */
+function quizTick(){
+  const e=OPENINGS_DATA[quizList[quizPos]], total=e.moves.length;
+  if(quizStep>=total){ quizFinish(); return; }
+  if(quizG.turn()!==quizUser){
+    quizSay("Adversarul joacă…","");
+    quizTimer=setTimeout(()=>{ quizTimer=null; quizApply(e.moves[quizStep]); quizTick(); },700);
+  } else {
+    quizSay("Rândul tău ("+(quizUser==="w"?"Albul":"Negrul")+"). Mutarea "+(quizStep+1)+" din "+total+".","");
+  }
+}
+function quizMistake(sq,want){
+  quizMistakes++;
+  quizBusy=true;
+  const from=want.slice(0,2), to=want.slice(2,4);
+  const san=new Chess(quizG.fen()).move({from,to,promotion:want.length>4?want[4]:undefined}).san;
+  quizSel=null;
+  quizMark();
+  const b=document.getElementById("quizBoard");
+  const fe=b.querySelector('.sq[data-sq="'+from+'"]'), te=b.querySelector('.sq[data-sq="'+to+'"]'), we=b.querySelector('.sq[data-sq="'+sq+'"]');
+  if(fe) fe.classList.add("hl-good");
+  if(te) te.classList.add("hl-good");
+  if(we) we.classList.add("hl-bad");
+  quizSay("Nu e mutarea din deschidere. Mutarea corectă era "+san+". O joc eu, ca să continuăm.","bad");
+  quizTimer=setTimeout(()=>{
+    quizTimer=null; quizBusy=false;
+    quizApply(want);
+    quizTick();
+    quizSay("Mutarea corectă era "+san+".","bad");
+  },1600);
+}
+function quizBoardClick(ev){
+  const sqEl=ev.target.closest(".sq");
+  if(!sqEl || !quizG || quizBusy || !quizList.length) return;
+  const e=OPENINGS_DATA[quizList[quizPos]];
+  if(quizStep>=e.moves.length || quizG.turn()!==quizUser) return;
+  const sq=sqEl.dataset.sq;
+  if(quizSel){
+    if(sq===quizSel){ quizSel=null; quizMark(); return; }
+    const cands=quizG.moves({square:quizSel,verbose:true}).filter(m=>m.to===sq);
+    if(cands.length){
+      const want=e.moves[quizStep];
+      const hit=cands.find(m=>m.from+m.to+(m.promotion||"")===want);
+      quizSel=null;
+      if(hit){ quizApply(want); quizTick(); }
+      else { quizMark(); quizMistake(sq,want); }
+      return;
+    }
+  }
+  const own=quizG.get(sq);
+  quizSel=(own && own.color===quizUser)?sq:null;
+  quizMark();
+}
+function quizRecord(i,mistakes){
+  const st=quizLoadStats(), k=openingsKey(i);
+  const s=st[k]||{n:0,p:0,m:0,last:0};
+  s.n++;
+  if(mistakes===0) s.p++;
+  s.m+=mistakes;
+  s.last=mistakes===0?1:0;
+  s.t=Date.now();
+  st[k]=s;
+  quizSaveStats(st);
+}
+function quizFinish(){
+  const i=quizList[quizPos], e=OPENINGS_DATA[i];
+  quizRecord(i,quizMistakes);
+  if(quizMistakes===0) quizOk++;
+  document.getElementById("quizScore").textContent="Fără greșeli până acum: "+quizOk;
+  const last=quizPos===quizList.length-1;
+  document.getElementById("quizName").textContent=e.op+(e.en&&e.en!==e.op?" · "+e.en:"")+" — "+(e.end==="mate"?"mat":"dama capturată")+" în "+Math.ceil(e.moves.length/2)+" mutări";
+  document.getElementById("quizEndTitle").textContent=last
+    ? "Test terminat: "+quizOk+" din "+quizList.length+" fără greșeli"
+    : (quizMistakes===0?"Fără greșeli ✓":"Ai greșit de "+quizMistakes+" "+(quizMistakes===1?"dată":"ori"));
+  document.getElementById("quizEndNote").textContent=last?"Vezi statistica de mai jos.":"";
+  document.getElementById("quizNextBtn").textContent=last?"↻ Test nou":"Următoarea →";
+  document.getElementById("quizEnd").hidden=false;
+  quizSay("","");
+  quizRenderStats();
+}
+function quizBegin(){
+  quizStop();
+  quizG=new Chess();
+  quizStep=0; quizMistakes=0; quizLast=null; quizSel=null;
+  document.getElementById("quizEnd").hidden=true;
+  document.getElementById("quizName").textContent="";
+  quizShowSetup(false);
+  quizRender();
+  quizTick();
+}
+function quizStart(){
+  const pool=quizPool();
+  if(!pool.length){ quizSay("Nu sunt deschideri pentru filtrul ales.","bad"); return; }
+  quizList=quizShuffle(pool).slice(0,quizCountSel);
+  quizPos=0; quizOk=0;
+  quizBegin();
+}
+function quizStop(){
+  clearTimeout(quizTimer);
+  quizTimer=null; quizBusy=false; quizSel=null;
+}
+/* pornește din nou pagina: setările rămân, tabla arată poziția de start */
+function quizReset(){
+  quizStop();
+  quizList=[]; quizPos=0; quizOk=0; quizStep=0; quizMistakes=0; quizLast=null;
+  quizG=new Chess();
+  const end=document.getElementById("quizEnd"); if(end) end.hidden=true;
+  const nm=document.getElementById("quizName"); if(nm) nm.textContent="";
+  quizShowSetup(true);
+  quizSay("","");
+  quizRender();
+  document.getElementById("quizProgress").textContent="";
+  document.getElementById("quizScore").textContent="";
+  quizPoolInfo();
+}
+function quizRenderStats(){
+  const box=document.getElementById("quizStats");
+  if(!box) return;
+  const st=quizLoadStats(), counts={"cunoscută":0,"în progres":0,"de exersat":0,"netestată":0}, rows=[];
+  OPENINGS_DATA.forEach((e,i)=>{
+    if(e.end==="theory") return;
+    const s=st[openingsKey(i)], stt=quizStatusOf(s);
+    counts[stt]++;
+    if(s && s.n) rows.push({e,s,stt});
+  });
+  const weak=rows.filter(r=>r.stt==="de exersat").sort((a,b)=>(a.s.p/a.s.n)-(b.s.p/b.s.n)).slice(0,15);
+  const strong=rows.filter(r=>r.stt==="cunoscută").sort((a,b)=>(b.s.p/b.s.n)-(a.s.p/a.s.n)||b.s.n-a.s.n).slice(0,15);
+  box.textContent="";
+  const sum=document.createElement("p");
+  sum.className="quiz-sum";
+  sum.textContent="Cunoscute bine: "+counts["cunoscută"]+" · În progres: "+counts["în progres"]+" · De exersat: "+counts["de exersat"]+" · Netestate: "+counts["netestată"];
+  box.appendChild(sum);
+  const list=(title,items)=>{
+    const h=document.createElement("h4"); h.textContent=title; box.appendChild(h);
+    if(!items.length){ const p=document.createElement("p"); p.className="quiz-sum"; p.textContent="Nimic încă."; box.appendChild(p); return; }
+    const ol=document.createElement("ol");
+    items.forEach(r=>{
+      const li=document.createElement("li");
+      li.textContent=r.e.op+" · "+r.s.p+" din "+r.s.n+" fără greșeli";
+      ol.appendChild(li);
+    });
+    box.appendChild(ol);
+  };
+  list("De exersat",weak);
+  list("Cunoscute bine",strong);
+}
+function quizInit(){
+  quizReady=true;
+  quizMarkChips();
+  document.querySelectorAll("#quizLevelChips button").forEach(b=>b.addEventListener("click",()=>{ quizLevelSel=b.dataset.lv; quizMarkChips(); quizPoolInfo(); }));
+  document.querySelectorAll("#quizCountChips button").forEach(b=>b.addEventListener("click",()=>{ quizCountSel=Number(b.dataset.n); quizMarkChips(); quizPoolInfo(); }));
+  document.querySelectorAll("#quizSideChips button").forEach(b=>b.addEventListener("click",()=>{ quizUser=b.dataset.side; quizMarkChips(); }));
+  document.getElementById("quizPool").addEventListener("change",(ev)=>{ quizPoolSel=ev.target.value; quizPoolInfo(); });
+  document.getElementById("quizStartBtn").addEventListener("click",quizStart);
+  document.getElementById("quizNextBtn").addEventListener("click",()=>{
+    if(quizPos===quizList.length-1){ quizReset(); return; }
+    quizPos++;
+    quizBegin();
+  });
+  document.getElementById("quizQuitBtn").addEventListener("click",quizReset);
+  document.getElementById("quizBoard").addEventListener("click",quizBoardClick);
+  buildBoardDom(document.getElementById("quizBoard"));
+}
+function quizEnter(){
+  if(!quizReady) quizInit();
+  quizReset();
+  quizRenderStats();
+}
 function openingsEnter(){
   if(window.matchMedia && window.matchMedia("(max-width:760px)").matches) window.scrollTo(0,0);
   const firstEnter=!openBuilt;
@@ -8369,7 +8704,8 @@ function applyLanguage(){
   const tabKeys={1:"tabBase",2:"tabAdvanced",3:"tabTactics",4:"tabEndgames",5:"tabDefense",6:"tabCaptures",7:"tabLive",8:"tabTraps",9:"tabOpenings"};
   tabs.forEach(btn=>{
     const countSpan=btn.querySelector(".count");
-    btn.textContent=t(tabKeys[btn.dataset.page]);
+    /* pages without a translation key (the quiz) keep their own text */
+    if(tabKeys[btn.dataset.page]) btn.textContent=t(tabKeys[btn.dataset.page]);
     if(countSpan) btn.appendChild(countSpan);
   });
   const diffBtns=document.querySelectorAll(".diff-btn");
