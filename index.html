@@ -701,6 +701,13 @@ button.btn.color-pick-btn:hover{background:var(--accent-soft); filter:none;}
 .open-toggle input[type=checkbox]::after{content:""; position:absolute; top:5px; left:5px; width:20px; height:20px; border-radius:50%; background:var(--text-dim); transition:transform .2s, background .2s;}
 .open-toggle input[type=checkbox]:checked{background:var(--accent); box-shadow:none;}
 .open-toggle input[type=checkbox]:checked::after{transform:translateX(20px); background:var(--on-accent);}
+.open-rate{display:flex; align-items:center; gap:10px; min-height:52px; padding:6px 14px; border-radius:16px; background:var(--surface-2); color:var(--text-dim); font-size:.9rem; font-weight:600;}
+.open-rate span{flex:1;}
+.open-rate-btn{width:42px; height:42px; padding:0; border-radius:12px; border:2px solid; background:var(--surface); font-size:1.3rem; font-weight:800; line-height:1; cursor:pointer;}
+.open-rate-btn.plus{color:var(--good); border-color:var(--good);}
+.open-rate-btn.minus{color:var(--bad); border-color:var(--bad);}
+.open-rate-btn.plus.on{background:var(--good); color:var(--on-accent);}
+.open-rate-btn.minus.on{background:var(--bad); color:var(--on-accent);}
 #openingsContainer .open-name::before{content:"📖 ";}
 .open-pick-row{display:flex; gap:8px;}
 .open-pick-row select{flex:1 1 auto; min-width:0;}
@@ -892,6 +899,11 @@ button.btn.color-pick-btn:hover{background:var(--accent-soft); filter:none;}
       <input type="search" id="openSearch" placeholder="Caută (ex: Scoțiană, Siciliană, Vieneză)">
       <label class="open-toggle"><input type="checkbox" id="openAll"> Arată și liniile de teorie (fără mat)</label>
       <label class="open-toggle"><input type="checkbox" id="openTodo"> Doar cele nejucate</label>
+      <div class="open-rate" id="openRate" role="group" aria-label="Părerea ta despre deschidere">
+        <span>Părerea ta:</span>
+        <button type="button" class="open-rate-btn plus" data-v="+" aria-pressed="false" title="Folositoare">+</button>
+        <button type="button" class="open-rate-btn minus" data-v="-" aria-pressed="false" title="Nefolositoare">−</button>
+      </div>
       <select class="lang-select" id="openLen" aria-label="Număr de mutări"></select>
     </div>
   </div>
@@ -5771,7 +5783,7 @@ function openingsFillSelect(){
   const q=openingsFold((document.getElementById("openSearch").value||"").trim());
   const showAll=document.getElementById("openAll").checked;
   const onlyTodo=document.getElementById("openTodo").checked;
-  const reps=repsLoad();
+  const reps=repsLoad(), rate=rateLoad();
   const want=Number(document.getElementById("openLen").value||0);
   const MAX=400;
   const idx=[];
@@ -5792,8 +5804,9 @@ function openingsFillSelect(){
   if(idx.indexOf(openIdx)<0 && openingsInLevel(OPENINGS_DATA[openIdx])) idx.unshift(openIdx);
   sel.innerHTML=idx.map(i=>{
     const e=OPENINGS_DATA[i];
-    /* ✓ = linia a fost jucată de tine până la final cel puțin o dată */
-    const label=(reps[openingsKey(i)]?"✓ ":"")+e.op+(e.alias?" ("+e.alias+")":"")+" · "+openingsEndLabel(e)+" · "+Math.ceil(e.moves.length/2)+" mutări";
+    /* ✓ = linia a fost jucată de tine până la final cel puțin o dată; + / − = părerea ta */
+    const rv=rate[openingsKey(i)];
+    const label=(reps[openingsKey(i)]?"✓ ":"")+(rv==="+"?"+ ":rv==="-"?"− ":"")+e.op+(e.alias?" ("+e.alias+")":"")+" · "+openingsEndLabel(e)+" · "+Math.ceil(e.moves.length/2)+" mutări";
     return '<option value="'+i+'">'+label+'</option>';
   }).join("");
   sel.value=String(openIdx);
@@ -5905,6 +5918,7 @@ function openingsRender(){
     }
   }
   openingsRepsShow();
+  openingsShowRate();
   openingsApplyTip();
   openingsSaveState();
 }
@@ -5935,6 +5949,25 @@ function openingsRepsShow(){
   if(el) el.innerHTML="Jucată: <b>"+played+"×</b> · Parcursă: <b>"+viewed+"×</b>";
   const note=document.getElementById("openEndNote");
   if(note) note.textContent=(played?"Ai jucat-o "+openingsTimes(played):"N-ai jucat-o încă")+" și "+(viewed?"ai parcurs-o "+openingsTimes(viewed):"n-ai parcurs-o încă")+".";
+}
+/* părerea ta despre fiecare deschidere: „+” folositoare, „−” nefolositoare (apăsată a doua oară se șterge) */
+const RATE_KEY="principii-sah-folosire";
+function rateLoad(){ try{ return JSON.parse(localStorage.getItem(RATE_KEY)||"{}")||{}; }catch(e){ return {}; } }
+function openingsRate(){ return rateLoad()[openingsKey(openIdx)]||""; }
+function openingsSetRate(v){
+  const o=rateLoad(), k=openingsKey(openIdx);
+  if(o[k]===v) delete o[k]; else o[k]=v;
+  try{ localStorage.setItem(RATE_KEY,JSON.stringify(o)); }catch(e){}
+  openingsShowRate();
+  openingsFillSelect();
+}
+function openingsShowRate(){
+  const v=openingsRate();
+  document.querySelectorAll("#openRate .open-rate-btn").forEach(b=>{
+    const on=b.dataset.v===v;
+    b.classList.toggle("on",on);
+    b.setAttribute("aria-pressed",on?"true":"false");
+  });
 }
 function openingsEvidence(){
   const box=document.getElementById("openEv");
@@ -6128,6 +6161,7 @@ function openingsEnter(){
       try{ localStorage.setItem("principii-sah-doar-nejucate",todoBox.checked?"1":"0"); }catch(e){}
       openingsFillSelect();
     });
+    document.querySelectorAll("#openRate .open-rate-btn").forEach(b=>b.addEventListener("click",()=>openingsSetRate(b.dataset.v)));
     const lenSel=document.getElementById("openLen");
     const counts={};
     OPENINGS_DATA.forEach(e=>{ const n=Math.ceil(e.moves.length/2); counts[n]=(counts[n]||0)+1; });
