@@ -1129,10 +1129,6 @@ button.btn.color-pick-btn:hover{background:var(--accent-soft); filter:none;}
       <div class="open-play-row">
         <button class="btn" id="openMode" type="button">▶ Joacă linia</button>
         <button class="btn hint-btn" id="openHint" type="button" title="Arată următoarea mutare">💡 Indiciu</button>
-        <select class="lang-select" id="openSide" aria-label="Joc cu">
-          <option value="w">Joc cu Albul</option>
-          <option value="b">Joc cu Negrul</option>
-        </select>
       </div>
       <div class="open-msg" id="openPlayMsg"></div>
       <div class="actions open-controls">
@@ -6178,12 +6174,8 @@ function openingsSet(i,s){
   openIdx=i;
   const sel=document.getElementById("openingSelect");
   if(sel) sel.value=String(i);
-  const w=OPENINGS_DATA[i].winner;
-  if(w){
-    openUserSide=w;
-    const ss=document.getElementById("openSide");
-    if(ss) ss.value=w;
-  }
+  /* joci mereu partea care câștigă linia (la liniile de teorie, Albul) */
+  openUserSide=OPENINGS_DATA[i].winner||"w";
   openingsSetStep(s);
 }
 function openingsAuto(){
@@ -6252,14 +6244,12 @@ function openingsRestoreState(){
   openIdx=i;
   openStep=Math.max(0,Math.min(Number(st.s)||0,OPENINGS_DATA[i].moves.length));
   openMode=st.m==="play"?"play":"view";
-  if(st.side==="w"||st.side==="b") openUserSide=st.side;
+  openUserSide=OPENINGS_DATA[i].winner||"w";
   /* a line restored at its end was already counted; one restored halfway is not a full "parcurgere" */
   openDoneCounted=openStep>=OPENINGS_DATA[i].moves.length;
   openViewOk=openStep===0;
   const mb=document.getElementById("openMode");
   if(mb) mb.textContent=openMode==="play"?"👁 Vizualizare":"▶ Joacă linia";
-  const ss=document.getElementById("openSide");
-  if(ss) ss.value=openUserSide;
 }
 /* when the app opens, the board starts with the same choice as after a mate: play, replay or continue */
 let openStartPrompt=false;
@@ -6572,7 +6562,6 @@ function openingsEnter(){
     OPENINGS_DATA.forEach(e=>{ const n=Math.ceil(e.moves.length/2); counts[n]=(counts[n]||0)+1; });
     lenSel.innerHTML='<option value="0">Toate lungimile</option>'+Object.keys(counts).map(Number).sort((a,b)=>a-b).map(n=>'<option value="'+n+'">'+n+' mutări ('+counts[n]+' linii)</option>').join("");
     lenSel.addEventListener("change",openingsFillSelect);
-    document.getElementById("openSide").addEventListener("change",(ev)=>{ openUserSide=ev.target.value; openingsStop(); openingsSetStep(0); });
     document.getElementById("openMode").addEventListener("click",()=>openingsSetMode(openMode==="play"?"view":"play"));
     document.getElementById("openRestart").addEventListener("click",()=>{
       const replay=openStartPrompt || openMode!=="play";
