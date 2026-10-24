@@ -720,6 +720,27 @@ button.btn.color-pick-btn:hover{background:var(--accent-soft); filter:none;}
 .open-restart:active{transform:scale(.96);}
 .open-restart[hidden]{display:none;}
 .open-restart.secondary{background:var(--surface-2); color:var(--accent); box-shadow:inset 0 0 0 2px var(--accent);}
+.open-board-name{display:flex; flex-direction:column; align-items:center; gap:2px; padding:10px 14px; border-radius:16px; background:var(--accent); color:var(--on-accent); text-align:center;}
+.open-board-name .obn-name{font-family:'Fraunces',Georgia,serif; font-size:clamp(1.05rem,2.4vw,1.45rem); font-weight:700; line-height:1.2; text-wrap:balance;}
+.open-board-name .obn-name::before{content:"📖 ";}
+.open-board-name .obn-meta{font-size:.8rem; font-weight:600; opacity:.85;}
+@media (min-width:761px){
+  /* laptop: one compact band, so the board keeps its size */
+  .open-board-name{display:block; padding:7px 14px; line-height:1.25;}
+  .open-board-name .obn-name{font-size:1.2rem;}
+  .open-board-name .obn-meta{margin-left:10px; white-space:nowrap;}
+}
+@media (max-width:760px){
+  .open-board-name{padding:7px 12px;}
+  .open-board-name .obn-name{font-size:1rem;}
+  /* moves and result are already in the picker at the top */
+  .open-board-name .obn-meta{display:none;}
+  /* room for the name under the board: the principles' save button is not needed on this page */
+  body.open-page-active .savebar{display:none;}
+  body.open-page-active .wrap{gap:10px;}
+  body.open-page-active .page-menu-btn{min-height:48px; padding:6px 14px;}
+  body.open-page-active .top h1{font-size:1.35rem;}
+}
 .open-tip{position:absolute; top:8px; left:50%; transform:translateX(-50%); z-index:15; max-width:calc(100% - 16px); padding:8px 14px; border-radius:999px; font-family:'Public Sans',sans-serif; font-size:clamp(.78rem,2.6cqw,.95rem); font-weight:700; line-height:1.25; text-align:center; pointer-events:none; box-shadow:0 4px 14px rgba(0,0,0,.25);}
 .open-tip[hidden]{display:none;}
 .open-tip.bad{background:var(--bad); color:#fff;}
@@ -1013,6 +1034,7 @@ button.btn.color-pick-btn:hover{background:var(--accent-soft); filter:none;}
           </div>
         </div>
       </div>
+      <div class="open-board-name" id="openBoardName"><span class="obn-name"></span><span class="obn-meta"></span></div>
       <div class="status-line">
         <span id="openTurnLabel">La mutare: <b>Alb</b></span>
         <span id="openStepLabel">0 / 0</span>
@@ -3453,6 +3475,7 @@ function applyPageVisibility(){
   document.getElementById("levelrow").style.display=(isGame||isDefense||isBulkTactics||isOpen)?"none":"flex";
   document.getElementById("techniqueFilterRow").style.display=isBulkTactics?"flex":"none";
   document.body.classList.toggle("game-page-active",isGame);
+  document.body.classList.toggle("open-page-active",isOpen);
   document.getElementById("progress").style.display=(isGame||isOpen)?"none":"";
   document.getElementById("openingsContainer").classList.toggle("show",isOpen);
   document.getElementById("openTopbar").style.display=isOpen?"":"none";
@@ -5763,6 +5786,14 @@ function openingsRender(){
   const pick=document.getElementById("openingSelect");
   const nm=document.getElementById("openName");
   if(nm&&pick) nm.textContent=pick.selectedIndex>=0?pick.options[pick.selectedIndex].textContent:"";
+  /* the opening's name right under the board, large, so it sticks while learning */
+  const bn=document.getElementById("openBoardName");
+  if(bn && bn.dataset.k!==String(openIdx)){
+    bn.dataset.k=String(openIdx);
+    bn.querySelector(".obn-name").textContent=e.op;
+    bn.querySelector(".obn-meta").textContent=Math.ceil(total/2)+" mutări · "+(e.end==="mate"?"se termină cu mat":(e.end==="queen"?"se termină cu dama capturată":"linie de teorie"))+(e.winner?" · câștigă "+(e.winner==="w"?"Albul":"Negrul"):"");
+    if(document.body.classList.contains("desk-board")) setTimeout(fitBoardDesktop,0);
+  }
   document.getElementById("openStepLabel").textContent=openStep+" / "+total;
   document.getElementById("openTurnLabel").innerHTML="La mutare: <b>"+(g.turn()==="w"?"Alb":"Negru")+"</b>";
   const res=document.getElementById("openResult");
