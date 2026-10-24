@@ -8225,8 +8225,20 @@ try{
 
 <script>
 if("serviceWorker" in navigator){
+  // a newly published version takes over by itself: reload once when the new service worker takes control
+  var hadController = !!navigator.serviceWorker.controller, reloading = false;
+  navigator.serviceWorker.addEventListener("controllerchange", function(){
+    if(!hadController || reloading) return;
+    reloading = true;
+    location.reload();
+  });
   window.addEventListener("load", function(){
-    navigator.serviceWorker.register("sw.js").catch(function(){});
+    navigator.serviceWorker.register("sw.js").then(function(reg){
+      // look for a new version whenever the app comes back to the screen
+      document.addEventListener("visibilitychange", function(){
+        if(document.visibilityState === "visible") reg.update().catch(function(){});
+      });
+    }).catch(function(){});
   });
 }
 </script>
