@@ -1204,6 +1204,7 @@ button.btn.color-pick-btn:hover{background:var(--accent-soft); filter:none;}
         </div>
         <div class="quiz-label">Joci cu</div>
         <div class="quiz-chips" id="quizSideChips">
+          <button class="quiz-chip" type="button" data-side="win">Câștigătorul (recomandat)</button>
           <button class="quiz-chip" type="button" data-side="w">Albul</button>
           <button class="quiz-chip" type="button" data-side="b">Negrul</button>
         </div>
@@ -6278,7 +6279,7 @@ function openingsShowPrompt(){
 /* ===== Test deschideri: o deschidere la întâmplare, jucată din memorie (adversarul joacă pe ale lui).
    Numele apare abia la sfârșit. Statistica (per jucător) arată ce știi bine și ce trebuie exersat. ===== */
 const QUIZ_KEY="principii-sah-test-deschideri";
-let quizLevelSel="toate", quizCountSel=10, quizUser="w", quizPoolSel="toate", quizShowName=true;
+let quizLevelSel="toate", quizCountSel=10, quizUser="w", quizPoolSel="toate", quizShowName=true, quizSideMode="win";
 let quizList=[], quizPos=0, quizG=null, quizStep=0, quizMistakes=0, quizOk=0, quizLast=null, quizSel=null, quizTimer=null, quizBusy=false;
 var quizReady=false;
 function quizLoadStats(){ try{ return JSON.parse(ppGet(QUIZ_KEY)||"{}")||{}; }catch(e){ return {}; } }
@@ -6328,7 +6329,7 @@ function quizMarkChips(){
   const on=(sel,attr,val)=>document.querySelectorAll(sel+" button").forEach(b=>b.classList.toggle("active",String(b.dataset[attr])===String(val)));
   on("#quizLevelChips","lv",quizLevelSel);
   on("#quizCountChips","n",quizCountSel);
-  on("#quizSideChips","side",quizUser);
+  on("#quizSideChips","side",quizSideMode);
   on("#quizNameChips","show",quizShowName?"1":"0");
 }
 function quizRender(){
@@ -6446,6 +6447,8 @@ function quizFinish(){
 }
 function quizBegin(){
   quizStop();
+  /* „Câștigătorul”: joci mereu partea care câștigă linia; Albul/Negrul forțează culoarea */
+  quizUser=quizSideMode==="win"?(OPENINGS_DATA[quizList[quizPos]].winner||"w"):quizSideMode;
   quizG=new Chess();
   quizStep=0; quizMistakes=0; quizLast=null; quizSel=null;
   document.getElementById("quizEnd").hidden=true;
@@ -6536,7 +6539,7 @@ function quizInit(){
   quizMarkChips();
   document.querySelectorAll("#quizLevelChips button").forEach(b=>b.addEventListener("click",()=>{ quizLevelSel=b.dataset.lv; quizMarkChips(); quizPoolInfo(); }));
   document.querySelectorAll("#quizCountChips button").forEach(b=>b.addEventListener("click",()=>{ quizCountSel=Number(b.dataset.n); quizMarkChips(); quizPoolInfo(); }));
-  document.querySelectorAll("#quizSideChips button").forEach(b=>b.addEventListener("click",()=>{ quizUser=b.dataset.side; quizMarkChips(); }));
+  document.querySelectorAll("#quizSideChips button").forEach(b=>b.addEventListener("click",()=>{ quizSideMode=b.dataset.side; quizMarkChips(); }));
   document.querySelectorAll("#quizNameChips button").forEach(b=>b.addEventListener("click",()=>{ quizShowName=b.dataset.show==="1"; quizMarkChips(); }));
   document.getElementById("quizPool").addEventListener("change",(ev)=>{ quizPoolSel=ev.target.value; quizPoolInfo(); });
   document.getElementById("quizStartBtn").addEventListener("click",quizStart);
