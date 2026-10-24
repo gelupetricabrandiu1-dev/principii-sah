@@ -6100,6 +6100,13 @@ function openingsRestoreState(){
 }
 /* when the app opens, the board starts with the same choice as after a mate: play, replay or continue */
 let openStartPrompt=false;
+/* a newly chosen opening or level starts with the same choice on the board: replay or play it */
+function openingsShowPrompt(){
+  openingsStop();
+  openingsMsg("");
+  openStartPrompt=true;
+  openingsRender();
+}
 function openingsEnter(){
   if(window.matchMedia && window.matchMedia("(max-width:760px)").matches) window.scrollTo(0,0);
   const firstEnter=!openBuilt;
@@ -6107,7 +6114,7 @@ function openingsEnter(){
     openingsRestoreState();
     buildBoardDom(openBoardEl);
     const sel=document.getElementById("openingSelect");
-    sel.addEventListener("change",()=>openingsSet(Number(sel.value),0));
+    sel.addEventListener("change",()=>{ openingsSet(Number(sel.value),0); openingsShowPrompt(); });
     document.getElementById("openSearch").addEventListener("input",openingsFillSelect);
     document.getElementById("openAll").addEventListener("change",openingsFillSelect);
     const lenSel=document.getElementById("openLen");
@@ -6147,6 +6154,7 @@ function openingsEnter(){
       document.getElementById("openEv").hidden=true;
       sel.value=String(i);
       openingsSet(i,0);
+      openingsShowPrompt();
     });
     document.getElementById("openFirst").addEventListener("click",()=>{ openingsStop(); openingsSetStep(0); });
     document.getElementById("openPrev").addEventListener("click",()=>{ openingsStop(); openingsSetStep(openStep-1); });
@@ -6178,7 +6186,7 @@ function openingsEnter(){
     });
     document.getElementById("openLevel").addEventListener("click",(ev)=>{
       const b=ev.target.closest("button[data-lv]");
-      if(b) openingsSetLevel(b.dataset.lv);
+      if(b){ openingsSetLevel(b.dataset.lv); openingsShowPrompt(); }
     });
     document.querySelectorAll("#openLevel button").forEach(b=>b.classList.toggle("active",b.dataset.lv===openLevel));
     openBuilt=true;
