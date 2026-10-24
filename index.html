@@ -701,15 +701,15 @@ button.btn.color-pick-btn:hover{background:var(--accent-soft); filter:none;}
 .open-toggle input[type=checkbox]::after{content:""; position:absolute; top:5px; left:5px; width:20px; height:20px; border-radius:50%; background:var(--text-dim); transition:transform .2s, background .2s;}
 .open-toggle input[type=checkbox]:checked{background:var(--accent); box-shadow:none;}
 .open-toggle input[type=checkbox]:checked::after{transform:translateX(20px); background:var(--on-accent);}
-.open-row{display:flex; flex-wrap:wrap; gap:8px;}
-.open-row .open-toggle{flex:1 1 200px;}
-.open-rate{display:flex; flex-wrap:wrap; align-items:center; gap:8px; min-height:52px; padding:6px 12px; border-radius:16px; background:var(--surface-2); color:var(--text-dim); font-size:.85rem; font-weight:600;}
-.open-rate span{color:var(--text);}
-.open-rate-btn{width:42px; height:42px; padding:0; border-radius:12px; border:2px solid; background:var(--surface); font-size:1.3rem; font-weight:800; line-height:1; cursor:pointer;}
+/* părerea ta: + verde, − roșu; butoanele stau sub numele deschiderii, iar lista se colorează la fel */
+.open-rate{display:flex; justify-content:center; gap:10px; margin-top:6px;}
+.open-rate-btn{width:40px; height:40px; padding:0; border-radius:12px; border:2px solid; background:#fff; font-size:1.3rem; font-weight:800; line-height:1; cursor:pointer;}
 .open-rate-btn.plus{color:var(--good); border-color:var(--good);}
 .open-rate-btn.minus{color:var(--bad); border-color:var(--bad);}
-.open-rate-btn.plus.on{background:var(--good); color:var(--on-accent);}
-.open-rate-btn.minus.on{background:var(--bad); color:var(--on-accent);}
+.open-rate-btn.plus.on{background:var(--good); color:#fff;}
+.open-rate-btn.minus.on{background:var(--bad); color:#fff;}
+.open-pick-row select.rate-plus, .lang-select option.rate-plus{color:var(--good);}
+.open-pick-row select.rate-minus, .lang-select option.rate-minus{color:var(--bad);}
 #openingsContainer .open-name::before{content:"📖 ";}
 .open-pick-row{display:flex; gap:8px;}
 .open-pick-row select{flex:1 1 auto; min-width:0;}
@@ -738,6 +738,7 @@ button.btn.color-pick-btn:hover{background:var(--accent-soft); filter:none;}
   .open-board-name{display:block; padding:7px 14px; line-height:1.25;}
   .open-board-name .obn-name{font-size:1.2rem;}
   .open-board-name .obn-meta{margin-left:10px; white-space:nowrap;}
+  .open-board-name .open-rate{display:inline-flex; margin:0 0 0 12px; vertical-align:middle;}
 }
 @media (max-width:760px){
   .open-board-name{padding:7px 12px;}
@@ -900,14 +901,7 @@ button.btn.color-pick-btn:hover{background:var(--accent-soft); filter:none;}
     <div class="open-filter">
       <input type="search" id="openSearch" placeholder="Caută (ex: Scoțiană, Siciliană, Vieneză)">
       <label class="open-toggle"><input type="checkbox" id="openAll"> Arată și liniile de teorie (fără mat)</label>
-      <div class="open-row">
-        <label class="open-toggle"><input type="checkbox" id="openTodo"> Doar cele nejucate</label>
-        <div class="open-rate" id="openRate" role="group" aria-label="Părerea ta despre deschidere">
-          <button type="button" class="open-rate-btn plus" data-v="+" aria-pressed="false" title="Folositoare">+</button>
-          <button type="button" class="open-rate-btn minus" data-v="-" aria-pressed="false" title="Nefolositoare">−</button>
-          <span id="openRateText">Părerea ta: nemarcată</span>
-        </div>
-      </div>
+      <label class="open-toggle"><input type="checkbox" id="openTodo"> Doar cele nejucate</label>
       <select class="lang-select" id="openLen" aria-label="Număr de mutări"></select>
     </div>
   </div>
@@ -1087,7 +1081,7 @@ button.btn.color-pick-btn:hover{background:var(--accent-soft); filter:none;}
           </div>
         </div>
       </div>
-      <div class="open-board-name" id="openBoardName"><span class="obn-name"></span><span class="obn-meta"></span></div>
+      <div class="open-board-name" id="openBoardName"><span class="obn-name"></span><span class="obn-meta"></span><div class="open-rate" id="openRate" role="group" aria-label="Părerea ta despre deschidere"><button type="button" class="open-rate-btn plus" data-v="+" aria-pressed="false" title="Folositoare">+</button><button type="button" class="open-rate-btn minus" data-v="-" aria-pressed="false" title="Nefolositoare">−</button></div></div>
       <div class="status-line">
         <span id="openTurnLabel">La mutare: <b>Alb</b></span>
         <span id="openStepLabel">0 / 0</span>
@@ -5811,7 +5805,8 @@ function openingsFillSelect(){
     /* ✓ = linia a fost jucată de tine până la final cel puțin o dată; + / − = părerea ta */
     const rv=rate[openingsKey(i)];
     const label=(reps[openingsKey(i)]?"✓ ":"")+(rv==="+"?"+ ":rv==="-"?"− ":"")+e.op+(e.alias?" ("+e.alias+")":"")+" · "+openingsEndLabel(e)+" · "+Math.ceil(e.moves.length/2)+" mutări";
-    return '<option value="'+i+'">'+label+'</option>';
+    const cls=rv==="+"?' class="rate-plus"':rv==="-"?' class="rate-minus"':"";
+    return '<option value="'+i+'"'+cls+'>'+label+'</option>';
   }).join("");
   sel.value=String(openIdx);
 }
@@ -5972,8 +5967,8 @@ function openingsShowRate(){
     b.classList.toggle("on",on);
     b.setAttribute("aria-pressed",on?"true":"false");
   });
-  const txt=document.getElementById("openRateText");
-  if(txt) txt.textContent="Părerea ta: "+(v==="+"?"folositoare":v==="-"?"nefolositoare":"nemarcată");
+  const sel=document.getElementById("openingSelect");
+  if(sel){ sel.classList.toggle("rate-plus",v==="+"); sel.classList.toggle("rate-minus",v==="-"); }
 }
 function openingsEvidence(){
   const box=document.getElementById("openEv");
