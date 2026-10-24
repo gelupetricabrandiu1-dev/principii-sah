@@ -723,16 +723,18 @@ button.btn.color-pick-btn:hover{background:var(--accent-soft); filter:none;}
 #quizContainer .board-outer{max-width:min(100%,420px)!important; margin:0 auto;}
 @media (max-width:760px){ #quizContainer{grid-template-columns:1fr;} }
 #quizBoardName[hidden]{display:none;}
-.quiz-marks{display:flex; flex-direction:column; gap:6px; margin:10px 0 4px;}
+.quiz-marks{display:flex; flex-direction:column; gap:10px; margin:10px 0 4px;}
 .quiz-marks:empty{display:none;}
-.quiz-row{display:flex; align-items:center; gap:12px; padding:4px 8px; border-radius:12px;}
-.quiz-row.current{background:var(--surface-2);}
-.quiz-cell{display:flex; flex-direction:column; align-items:center; gap:2px; flex:0 0 40px;}
+.quiz-strip{display:flex; flex-wrap:wrap; justify-content:center; gap:6px;}
+.quiz-cell{display:flex; flex-direction:column; align-items:center; gap:2px; min-width:36px; padding:4px; border-radius:12px;}
+.quiz-cell.current{background:var(--surface-2);}
 .quiz-num{font-size:.75rem; font-weight:700; color:var(--text-dim);}
 .quiz-tick{width:30px; height:30px; border-radius:999px; display:inline-flex; align-items:center; justify-content:center; background:var(--surface-2); color:var(--text-dim); font-weight:800;}
 .quiz-tick.ok{background:var(--good); color:var(--on-accent);}
 .quiz-tick.bad{background:var(--bad); color:var(--on-accent);}
-.quiz-rowname{font-size:.9rem; color:var(--text); min-width:0; overflow-wrap:anywhere;}
+.quiz-names{display:flex; flex-direction:column; gap:4px;}
+.quiz-rowname{font-size:.9rem; color:var(--text); overflow-wrap:anywhere;}
+.quiz-rowname.current{font-weight:700;}
 .player-box{display:flex; flex-direction:column; gap:10px; width:100%;}
 .player-add{display:flex; flex-direction:column; gap:8px;}
 .player-box input[type=text]{padding:10px 12px; border-radius:12px; border:1px solid var(--border); background:var(--surface-2); color:var(--text); font-family:inherit; font-size:.95rem;}
@@ -6492,12 +6494,14 @@ function quizRenderMarks(){
   const box=document.getElementById("quizMarks");
   if(!box) return;
   box.textContent="";
+  const strip=document.createElement("div");
+  strip.className="quiz-strip";
+  const names=document.createElement("div");
+  names.className="quiz-names";
   quizList.forEach((i,k)=>{
     const r=quizResults[k], e=OPENINGS_DATA[i];
-    const row=document.createElement("div");
-    row.className="quiz-row"+(k===quizPos?" current":"");
     const cell=document.createElement("div");
-    cell.className="quiz-cell";
+    cell.className="quiz-cell"+(k===quizPos?" current":"");
     const num=document.createElement("span");
     num.className="quiz-num";
     num.textContent=String(k+1);
@@ -6506,14 +6510,15 @@ function quizRenderMarks(){
     tick.textContent=r==="ok"?"✓":r==="bad"?"✗":"·";
     cell.appendChild(num);
     cell.appendChild(tick);
-    const name=document.createElement("span");
-    name.className="quiz-rowname";
+    strip.appendChild(cell);
+    const name=document.createElement("div");
+    name.className="quiz-rowname"+(k===quizPos?" current":"");
     const show=r || (k===quizPos && quizShowName);
-    name.textContent=show?e.op:(k===quizPos?"Deschidere ascunsă":"—");
-    row.appendChild(cell);
-    row.appendChild(name);
-    box.appendChild(row);
+    name.textContent=(k+1)+". "+(show?e.op:(k===quizPos?"Deschidere ascunsă":"—"));
+    names.appendChild(name);
   });
+  box.appendChild(strip);
+  box.appendChild(names);
 }
 /* aceeași bandă ca pe pagina Deschideri, sub tablă: numele și câte mutări are linia.
    Dacă ai ales „Ascunde până la final”, numele apare abia când termini linia */
