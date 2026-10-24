@@ -1139,6 +1139,7 @@ button.btn.color-pick-btn:hover{background:var(--accent-soft); filter:none;}
       <div class="open-play-row">
         <button class="btn" id="openMode" type="button">▶ Joacă linia</button>
         <button class="btn hint-btn" id="openHint" type="button" title="Arată următoarea mutare">💡 Indiciu</button>
+        <button class="btn" id="openToTest" type="button" title="Mergi la testul de deschideri">🎲 Test</button>
       </div>
       <div class="open-msg" id="openPlayMsg"></div>
       <div class="actions open-controls">
@@ -6623,6 +6624,7 @@ function openingsEnter(){
     document.getElementById("openEndPlay").addEventListener("click",()=>openingsSetMode("play"));
     document.getElementById("openContinue").addEventListener("click",()=>{ openStartPrompt=false; openingsRender(); });
     document.getElementById("openHint").addEventListener("click",openingsHint);
+    document.getElementById("openToTest").addEventListener("click",()=>switchPage(10));
     document.getElementById("openFilterBtn").addEventListener("click",(ev)=>{
       const open=document.getElementById("openTopbar").classList.toggle("filters-open");
       ev.currentTarget.setAttribute("aria-expanded",open?"true":"false");
