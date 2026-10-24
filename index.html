@@ -722,6 +722,7 @@ button.btn.color-pick-btn:hover{background:var(--accent-soft); filter:none;}
 .quiz-stats ol{margin:0; padding-left:20px; line-height:1.6;}
 #quizContainer .board-outer{max-width:min(100%,420px)!important; margin:0 auto;}
 @media (max-width:760px){ #quizContainer{grid-template-columns:1fr;} }
+#quizBoardName[hidden]{display:none;}
 .player-box{display:flex; flex-direction:column; gap:10px; width:100%;}
 .player-add{display:flex; flex-direction:column; gap:8px;}
 .player-box input[type=text]{padding:10px 12px; border-radius:12px; border:1px solid var(--border); background:var(--surface-2); color:var(--text); font-family:inherit; font-size:.95rem;}
@@ -1170,6 +1171,7 @@ button.btn.color-pick-btn:hover{background:var(--accent-soft); filter:none;}
           </div>
         </div>
       </div>
+      <div class="open-board-name" id="quizBoardName" hidden><span class="obn-name"></span><span class="obn-meta"></span></div>
       <div class="status-line">
         <span id="quizProgress"></span>
         <span id="quizScore"></span>
@@ -1204,6 +1206,11 @@ button.btn.color-pick-btn:hover{background:var(--accent-soft); filter:none;}
         <div class="quiz-chips" id="quizSideChips">
           <button class="quiz-chip" type="button" data-side="w">Albul</button>
           <button class="quiz-chip" type="button" data-side="b">Negrul</button>
+        </div>
+        <div class="quiz-label">Numele deschiderii</div>
+        <div class="quiz-chips" id="quizNameChips">
+          <button class="quiz-chip" type="button" data-show="1">Arată sub tablă</button>
+          <button class="quiz-chip" type="button" data-show="0">Ascunde până la final</button>
         </div>
         <div class="quiz-label">Ce testez</div>
         <select class="lang-select" id="quizPool" aria-label="Ce testez">
@@ -6270,7 +6277,7 @@ function openingsShowPrompt(){
 /* ===== Test deschideri: o deschidere la întâmplare, jucată din memorie (adversarul joacă pe ale lui).
    Numele apare abia la sfârșit. Statistica (per jucător) arată ce știi bine și ce trebuie exersat. ===== */
 const QUIZ_KEY="principii-sah-test-deschideri";
-let quizLevelSel="toate", quizCountSel=10, quizUser="w", quizPoolSel="toate";
+let quizLevelSel="toate", quizCountSel=10, quizUser="w", quizPoolSel="toate", quizShowName=true;
 let quizList=[], quizPos=0, quizG=null, quizStep=0, quizMistakes=0, quizOk=0, quizLast=null, quizSel=null, quizTimer=null, quizBusy=false;
 var quizReady=false;
 function quizLoadStats(){ try{ return JSON.parse(ppGet(QUIZ_KEY)||"{}")||{}; }catch(e){ return {}; } }
@@ -6323,6 +6330,7 @@ function quizMarkChips(){
   on("#quizLevelChips","lv",quizLevelSel);
   on("#quizCountChips","n",quizCountSel);
   on("#quizSideChips","side",quizUser);
+  on("#quizNameChips","show",quizShowName?"1":"0");
 }
 function quizRender(){
   const b=document.getElementById("quizBoard");
@@ -6425,6 +6433,7 @@ function quizRecord(i,mistakes){
 function quizFinish(){
   const i=quizList[quizPos], e=OPENINGS_DATA[i];
   quizRecord(i,quizMistakes);
+  quizBandSet(i,true);
   if(quizMistakes===0) quizOk++;
   document.getElementById("quizScore").textContent="Fără greșeli până acum: "+quizOk;
   const last=quizPos===quizList.length-1;
@@ -6444,6 +6453,7 @@ function quizBegin(){
   quizStep=0; quizMistakes=0; quizLast=null; quizSel=null;
   document.getElementById("quizEnd").hidden=true;
   document.getElementById("quizName").textContent="";
+  quizBandSet(quizList[quizPos],false);
   quizShowSetup(false);
   quizRender();
   quizTick();
@@ -6466,12 +6476,24 @@ function quizReset(){
   quizG=new Chess();
   const end=document.getElementById("quizEnd"); if(end) end.hidden=true;
   const nm=document.getElementById("quizName"); if(nm) nm.textContent="";
+  quizBandSet(null);
   quizShowSetup(true);
   quizSay("","");
   quizRender();
   document.getElementById("quizProgress").textContent="";
   document.getElementById("quizScore").textContent="";
   quizPoolInfo();
+}
+/* aceeași bandă ca pe pagina Deschideri, sub tablă: numele și câte mutări are linia.
+   Dacă ai ales „Ascunde până la final”, numele apare abia când termini linia */
+function quizBandSet(i,reveal){
+  const bn=document.getElementById("quizBoardName");
+  if(!bn) return;
+  if(i===null || i===undefined){ bn.hidden=true; return; }
+  const e=OPENINGS_DATA[i], show=reveal||quizShowName;
+  bn.hidden=false;
+  bn.querySelector(".obn-name").textContent=show?e.op:"Deschidere ascunsă";
+  bn.querySelector(".obn-meta").textContent=show?Math.ceil(e.moves.length/2)+" mutări · "+(e.end==="mate"?"se termină cu mat":"se termină cu dama capturată")+(e.winner?" · câștigă "+(e.winner==="w"?"Albul":"Negrul"):""):"";
 }
 function quizRenderStats(){
   const box=document.getElementById("quizStats");
@@ -6510,6 +6532,7 @@ function quizInit(){
   document.querySelectorAll("#quizLevelChips button").forEach(b=>b.addEventListener("click",()=>{ quizLevelSel=b.dataset.lv; quizMarkChips(); quizPoolInfo(); }));
   document.querySelectorAll("#quizCountChips button").forEach(b=>b.addEventListener("click",()=>{ quizCountSel=Number(b.dataset.n); quizMarkChips(); quizPoolInfo(); }));
   document.querySelectorAll("#quizSideChips button").forEach(b=>b.addEventListener("click",()=>{ quizUser=b.dataset.side; quizMarkChips(); }));
+  document.querySelectorAll("#quizNameChips button").forEach(b=>b.addEventListener("click",()=>{ quizShowName=b.dataset.show==="1"; quizMarkChips(); }));
   document.getElementById("quizPool").addEventListener("change",(ev)=>{ quizPoolSel=ev.target.value; quizPoolInfo(); });
   document.getElementById("quizStartBtn").addEventListener("click",quizStart);
   document.getElementById("quizNextBtn").addEventListener("click",()=>{
