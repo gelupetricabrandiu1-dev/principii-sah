@@ -997,6 +997,7 @@ button.btn.color-pick-btn:hover{background:var(--accent-soft); filter:none;}
           <div class="open-end-btns">
             <button class="open-restart" id="openRestart" type="button">↻ Reia linia</button>
             <button class="open-restart secondary" id="openEndPlay" type="button">▶ Joacă linia</button>
+            <button class="open-restart secondary" id="openContinue" type="button" hidden>⏵ Continuă</button>
           </div>
         </div>
       </div>
@@ -5755,16 +5756,22 @@ function openingsRender(){
   if(openStep===total){
     res.textContent=e.end==="theory"?"Linie de teorie: se oprește aici (fără mat sau dama capturată)":(e.end==="mate"?"Șah mat":"Dama adversă a fost capturată")+" — câștigă "+(e.winner==="w"?"Albul":"Negrul");
   } else res.textContent="";
-  /* end of the line: a restart button in the middle of the board */
+  /* the same box in the middle of the board when the app opens and at the end of a line */
   const endBox=document.getElementById("openEnd");
   if(endBox){
     const atEnd=total>0 && openStep===total;
-    endBox.hidden=!atEnd;
-    if(atEnd){
+    endBox.hidden=!(atEnd || openStartPrompt);
+    if(openStartPrompt){
+      document.getElementById("openEndTitle").textContent=e.op;
+      document.getElementById("openRestart").textContent="↻ Redă linia";
+      document.getElementById("openEndPlay").hidden=false;
+      document.getElementById("openContinue").hidden=!(openStep>0 && openStep<total);
+    } else if(atEnd){
       document.getElementById("openEndTitle").textContent=e.end==="mate"?"Șah mat!":(e.end==="queen"?"Dama capturată!":"Sfârșitul liniei");
       /* already playing: one button to play again; when only watching: watch again or play it yourself */
-      document.getElementById("openRestart").textContent=openMode==="play"?"↻ Joacă din nou":"↻ Reia linia";
+      document.getElementById("openRestart").textContent=openMode==="play"?"↻ Joacă din nou":"↻ Redă linia";
       document.getElementById("openEndPlay").hidden=openMode==="play";
+      document.getElementById("openContinue").hidden=true;
     }
   }
   const list=document.getElementById("openMoves");
@@ -5790,7 +5797,7 @@ function openingsRender(){
       openingsMsg("Linia s-a încheiat. Ai jucat-o "+openingsTimes(repsCount(openIdx))+".","ok");
     } else if(g.turn()!==openUserSide){
       openingsMsg("Adversarul joacă…");
-      openPlayTimer=setTimeout(()=>{ openPlayTimer=null; openingsSetStep(openStep+1); },600);
+      if(!openStartPrompt) openPlayTimer=setTimeout(()=>{ openPlayTimer=null; openingsSetStep(openStep+1); },600);
     } else {
       openingsMsg("Rândul tău ("+(openUserSide==="w"?"Albul":"Negrul")+"). Mutarea "+(openStep+1)+" din "+total+".");
     }
@@ -5865,6 +5872,7 @@ function openingsEvidence(){
   });
 }
 function openingsSetStep(s){
+  openStartPrompt=false;
   openSel=null;
   const prev=openStep;
   openStep=Math.max(0,Math.min(s,OPENINGS_DATA[openIdx].moves.length));
@@ -5906,6 +5914,7 @@ function openingsSetMode(m){
   openingsSet(openIdx,0);
 }
 function openingsBoardClick(ev){
+  if(openStartPrompt){ openStartPrompt=false; openingsRender(); }
   if(openMode!=="play") return;
   const sqEl=ev.target.closest(".sq");
   if(!sqEl) return;
@@ -5958,8 +5967,11 @@ function openingsRestoreState(){
   const ss=document.getElementById("openSide");
   if(ss) ss.value=openUserSide;
 }
+/* when the app opens, the board starts with the same choice as after a mate: play, replay or continue */
+let openStartPrompt=false;
 function openingsEnter(){
   if(window.matchMedia && window.matchMedia("(max-width:760px)").matches) window.scrollTo(0,0);
+  const firstEnter=!openBuilt;
   if(!openBuilt){
     openingsRestoreState();
     buildBoardDom(openBoardEl);
@@ -5975,11 +5987,16 @@ function openingsEnter(){
     document.getElementById("openSide").addEventListener("change",(ev)=>{ openUserSide=ev.target.value; openingsStop(); openingsSetStep(0); });
     document.getElementById("openMode").addEventListener("click",()=>openingsSetMode(openMode==="play"?"view":"play"));
     document.getElementById("openRestart").addEventListener("click",()=>{
+      const replay=openStartPrompt || openMode!=="play";
       openingsStop();
       openingsMsg("");
-      openingsSetStep(0);
+      if(!replay){ openingsSetStep(0); return; }   /* "Joacă din nou" */
+      /* "Redă linia": watch the whole line from the first move */
+      if(openMode==="play") openingsSetMode("view"); else openingsSetStep(0);
+      openingsAuto();
     });
     document.getElementById("openEndPlay").addEventListener("click",()=>openingsSetMode("play"));
+    document.getElementById("openContinue").addEventListener("click",()=>{ openStartPrompt=false; openingsRender(); });
     document.getElementById("openFilterBtn").addEventListener("click",(ev)=>{
       const open=document.getElementById("openTopbar").classList.toggle("filters-open");
       ev.currentTarget.setAttribute("aria-expanded",open?"true":"false");
@@ -6038,6 +6055,7 @@ function openingsEnter(){
   const pick=document.getElementById("openingSelect");
   if(!openingsInLevel(OPENINGS_DATA[openIdx]) && pick.options.length){ openIdx=Number(pick.options[0].value); openStep=0; }
   openingsSet(openIdx,openStep);
+  if(firstEnter){ openingsStop(); openStartPrompt=true; openingsRender(); }
 }
 
 function ensureGameStarted(){
