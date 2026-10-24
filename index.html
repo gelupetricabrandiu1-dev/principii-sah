@@ -701,8 +701,10 @@ button.btn.color-pick-btn:hover{background:var(--accent-soft); filter:none;}
 .open-toggle input[type=checkbox]::after{content:""; position:absolute; top:5px; left:5px; width:20px; height:20px; border-radius:50%; background:var(--text-dim); transition:transform .2s, background .2s;}
 .open-toggle input[type=checkbox]:checked{background:var(--accent); box-shadow:none;}
 .open-toggle input[type=checkbox]:checked::after{transform:translateX(20px); background:var(--on-accent);}
-.open-rate{display:flex; align-items:center; gap:10px; min-height:52px; padding:6px 14px; border-radius:16px; background:var(--surface-2); color:var(--text-dim); font-size:.9rem; font-weight:600;}
-.open-rate span{flex:1;}
+.open-row{display:flex; flex-wrap:wrap; gap:8px;}
+.open-row .open-toggle{flex:1 1 200px;}
+.open-rate{display:flex; flex-wrap:wrap; align-items:center; gap:8px; min-height:52px; padding:6px 12px; border-radius:16px; background:var(--surface-2); color:var(--text-dim); font-size:.85rem; font-weight:600;}
+.open-rate span{color:var(--text);}
 .open-rate-btn{width:42px; height:42px; padding:0; border-radius:12px; border:2px solid; background:var(--surface); font-size:1.3rem; font-weight:800; line-height:1; cursor:pointer;}
 .open-rate-btn.plus{color:var(--good); border-color:var(--good);}
 .open-rate-btn.minus{color:var(--bad); border-color:var(--bad);}
@@ -898,11 +900,13 @@ button.btn.color-pick-btn:hover{background:var(--accent-soft); filter:none;}
     <div class="open-filter">
       <input type="search" id="openSearch" placeholder="Caută (ex: Scoțiană, Siciliană, Vieneză)">
       <label class="open-toggle"><input type="checkbox" id="openAll"> Arată și liniile de teorie (fără mat)</label>
-      <label class="open-toggle"><input type="checkbox" id="openTodo"> Doar cele nejucate</label>
-      <div class="open-rate" id="openRate" role="group" aria-label="Părerea ta despre deschidere">
-        <span>Părerea ta:</span>
-        <button type="button" class="open-rate-btn plus" data-v="+" aria-pressed="false" title="Folositoare">+</button>
-        <button type="button" class="open-rate-btn minus" data-v="-" aria-pressed="false" title="Nefolositoare">−</button>
+      <div class="open-row">
+        <label class="open-toggle"><input type="checkbox" id="openTodo"> Doar cele nejucate</label>
+        <div class="open-rate" id="openRate" role="group" aria-label="Părerea ta despre deschidere">
+          <button type="button" class="open-rate-btn plus" data-v="+" aria-pressed="false" title="Folositoare">+</button>
+          <button type="button" class="open-rate-btn minus" data-v="-" aria-pressed="false" title="Nefolositoare">−</button>
+          <span id="openRateText">Părerea ta: nemarcată</span>
+        </div>
       </div>
       <select class="lang-select" id="openLen" aria-label="Număr de mutări"></select>
     </div>
@@ -5968,6 +5972,8 @@ function openingsShowRate(){
     b.classList.toggle("on",on);
     b.setAttribute("aria-pressed",on?"true":"false");
   });
+  const txt=document.getElementById("openRateText");
+  if(txt) txt.textContent="Părerea ta: "+(v==="+"?"folositoare":v==="-"?"nefolositoare":"nemarcată");
 }
 function openingsEvidence(){
   const box=document.getElementById("openEv");
