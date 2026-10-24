@@ -713,6 +713,18 @@ button.btn.color-pick-btn:hover{background:var(--accent-soft); filter:none;}
 .open-filter-btn{display:flex; align-items:center; justify-content:center; flex:0 0 52px; padding:0; font-size:1.1rem;}
 .open-filter-btn[aria-expanded="true"]{background:var(--accent); color:var(--on-accent);}
 .open-topbar .open-filter{display:none;}
+.open-end{position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); z-index:20; display:flex; flex-direction:column; align-items:center; gap:10px; padding:16px 22px; border-radius:20px; background:color-mix(in srgb, var(--surface) 88%, transparent); box-shadow:0 10px 30px rgba(0,0,0,.28); text-align:center; pointer-events:auto;}
+.open-end[hidden]{display:none;}
+.open-end-title{font-family:'Fraunces',Georgia,serif; font-size:clamp(1.1rem,5cqw,1.7rem); font-weight:700; color:var(--text);}
+.open-restart{min-height:52px; padding:12px 26px; border:0; border-radius:999px; background:var(--accent); color:var(--on-accent); font-family:'Public Sans',sans-serif; font-size:1.05rem; font-weight:700; cursor:pointer; box-shadow:0 4px 12px rgba(30,60,100,.25);}
+.open-restart:active{transform:scale(.96);}
+.open-restart[hidden]{display:none;}
+.open-restart.secondary{background:var(--surface-2); color:var(--accent); box-shadow:inset 0 0 0 2px var(--accent);}
+.open-end-btns{display:flex; flex-wrap:wrap; justify-content:center; gap:10px;}
+@media (prefers-reduced-motion: no-preference){
+  .open-end:not([hidden]){animation:openEndIn .35s cubic-bezier(.2,1.4,.4,1) .45s both;}
+  @keyframes openEndIn{from{opacity:0; transform:translate(-50%,-50%) scale(.7)}to{opacity:1; transform:translate(-50%,-50%) scale(1)}}
+}
 .open-level{display:grid; grid-template-columns:repeat(4,1fr); border:1.5px solid var(--text-dim); border-radius:999px; overflow:hidden; background:var(--surface);}
 .open-level button{display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; min-height:46px; padding:6px 4px; border:0; background:transparent; color:var(--text); font-family:'Public Sans',sans-serif; font-size:.92rem; font-weight:700; line-height:1.1; cursor:pointer;}
 .open-level button + button{border-left:1.5px solid var(--text-dim);}
@@ -978,6 +990,13 @@ button.btn.color-pick-btn:hover{background:var(--accent-soft); filter:none;}
     <div class="board-card">
       <div class="board-outer" style="max-width:420px;">
         <div class="board" id="openBoard"></div>
+        <div class="open-end" id="openEnd" hidden>
+          <div class="open-end-title" id="openEndTitle"></div>
+          <div class="open-end-btns">
+            <button class="open-restart" id="openRestart" type="button">↻ Reia linia</button>
+            <button class="open-restart secondary" id="openEndPlay" type="button">▶ Joacă linia</button>
+          </div>
+        </div>
       </div>
       <div class="status-line">
         <span id="openTurnLabel">La mutare: <b>Alb</b></span>
@@ -5734,6 +5753,18 @@ function openingsRender(){
   if(openStep===total){
     res.textContent=e.end==="theory"?"Linie de teorie: se oprește aici (fără mat sau dama capturată)":(e.end==="mate"?"Șah mat":"Dama adversă a fost capturată")+" — câștigă "+(e.winner==="w"?"Albul":"Negrul");
   } else res.textContent="";
+  /* end of the line: a restart button in the middle of the board */
+  const endBox=document.getElementById("openEnd");
+  if(endBox){
+    const atEnd=total>0 && openStep===total;
+    endBox.hidden=!atEnd;
+    if(atEnd){
+      document.getElementById("openEndTitle").textContent=e.end==="mate"?"Șah mat!":(e.end==="queen"?"Dama capturată!":"Sfârșitul liniei");
+      /* already playing: one button to play again; when only watching: watch again or play it yourself */
+      document.getElementById("openRestart").textContent=openMode==="play"?"↻ Joacă din nou":"↻ Reia linia";
+      document.getElementById("openEndPlay").hidden=openMode==="play";
+    }
+  }
   const list=document.getElementById("openMoves");
   let html="";
   e.sans.forEach((s,i)=>{
@@ -5894,6 +5925,12 @@ function openingsEnter(){
     lenSel.addEventListener("change",openingsFillSelect);
     document.getElementById("openSide").addEventListener("change",(ev)=>{ openUserSide=ev.target.value; openingsStop(); openingsSetStep(0); });
     document.getElementById("openMode").addEventListener("click",()=>openingsSetMode(openMode==="play"?"view":"play"));
+    document.getElementById("openRestart").addEventListener("click",()=>{
+      openingsStop();
+      openingsMsg("");
+      openingsSetStep(0);
+    });
+    document.getElementById("openEndPlay").addEventListener("click",()=>openingsSetMode("play"));
     document.getElementById("openFilterBtn").addEventListener("click",(ev)=>{
       const open=document.getElementById("openTopbar").classList.toggle("filters-open");
       ev.currentTarget.setAttribute("aria-expanded",open?"true":"false");
