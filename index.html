@@ -704,16 +704,17 @@ button.btn.color-pick-btn:hover{background:var(--accent-soft); filter:none;}
 #openingsContainer .open-name::before{content:"📖 ";}
 .open-pick-row{display:flex; gap:8px;}
 .open-pick-row select{flex:1 1 auto; min-width:0;}
-.open-filter-btn{display:none;}
 .open-reps-row{display:flex; align-items:center; justify-content:space-between; gap:10px;}
 .open-reps-row .btn{min-height:40px; padding:8px 14px; flex:0 0 auto;}
 .open-reps{text-align:left;}
+/* opening picker at the top of the page, always in view; search and filters fold away behind 🔍 */
+.open-topbar{position:sticky; top:0; z-index:35; display:flex; flex-direction:column; gap:8px; margin:-8px 0 0; padding:8px 0 10px; background:var(--bg);}
+.open-topbar .open-pick-row select{min-height:52px; font-size:1rem; font-weight:600; box-shadow:0 3px 8px rgba(30,60,100,.10);}
+.open-filter-btn{display:flex; align-items:center; justify-content:center; flex:0 0 52px; padding:0; font-size:1.1rem;}
+.open-filter-btn[aria-expanded="true"]{background:var(--accent); color:var(--on-accent);}
+.open-topbar .open-filter{display:none;}
+.open-topbar.filters-open .open-filter{display:flex;}
 @media (max-width:760px){
-  /* phone: search and filters fold away behind the 🔍 button so the board stays in view */
-  .open-filter-btn{display:flex; align-items:center; justify-content:center; flex:0 0 52px; padding:0; font-size:1.1rem;}
-  .open-filter-btn[aria-expanded="true"]{background:var(--accent); color:var(--on-accent);}
-  #openingsContainer .open-filter{display:none;}
-  #openingsContainer .content-card.filters-open .open-filter{display:flex;}
   #openingsContainer .content-card{padding:12px; gap:8px;}
   #openingsContainer .open-name{font-size:.95rem;}
 }
@@ -785,6 +786,18 @@ button.btn.color-pick-btn:hover{background:var(--accent-soft); filter:none;}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
 
 <div class="wrap">
+  <!-- Deschideri: the opening picker sits at the very top of the page and stays there while scrolling -->
+  <div class="open-topbar" id="openTopbar" style="display:none;">
+    <div class="open-pick-row">
+      <select class="lang-select" id="openingSelect" aria-label="Deschiderea"></select>
+      <button class="btn open-filter-btn" id="openFilterBtn" type="button" aria-expanded="false" title="Caută și filtrează" aria-label="Caută și filtrează">🔍</button>
+    </div>
+    <div class="open-filter">
+      <input type="search" id="openSearch" placeholder="Caută (ex: Scotch, Deutz, Italian)">
+      <label class="open-toggle"><input type="checkbox" id="openAll"> Arată și liniile de teorie (fără mat)</label>
+      <select class="lang-select" id="openLen" aria-label="Număr de mutări"></select>
+    </div>
+  </div>
   <div class="top">
     <div>
       <h1>Principii de <span class="brand-accent">Șah</span></h1>
@@ -974,15 +987,6 @@ button.btn.color-pick-btn:hover{background:var(--accent-soft); filter:none;}
         <h2 style="font-size:1.3rem;">Linii complete până la mat sau capturarea damei</h2>
       </div>
       <p style="margin:0;font-size:.85rem;color:var(--text-dim);line-height:1.5;">Fiecare linie pornește din poziția inițială și se joacă până la capăt: fie mat, fie o damă capturată. Alege deschiderea din listă, apoi parcurge mutările cu butoanele sau apasă direct pe o mutare.</p>
-      <div class="open-filter">
-        <input type="search" id="openSearch" placeholder="Caută (ex: Scotch, Deutz, Italian)">
-        <label class="open-toggle"><input type="checkbox" id="openAll"> Arată și liniile de teorie (fără mat)</label>
-        <select class="lang-select" id="openLen" aria-label="Număr de mutări"></select>
-      </div>
-      <div class="open-pick-row">
-        <select class="lang-select" id="openingSelect"></select>
-        <button class="btn open-filter-btn" id="openFilterBtn" type="button" aria-expanded="false" title="Caută și filtrează" aria-label="Caută și filtrează">🔍</button>
-      </div>
       <div class="open-name" id="openName"></div>
       <div class="open-reps-row">
         <div class="open-reps" id="openReps"></div>
@@ -3396,6 +3400,7 @@ function applyPageVisibility(){
   document.body.classList.toggle("game-page-active",isGame);
   document.getElementById("progress").style.display=(isGame||isOpen)?"none":"";
   document.getElementById("openingsContainer").classList.toggle("show",isOpen);
+  document.getElementById("openTopbar").style.display=isOpen?"":"none";
   if(!isOpen) openingsStop();
   renderTechniqueFilterSelect();
   setTimeout(fitBoardDesktop,0);
@@ -5843,8 +5848,7 @@ function openingsEnter(){
     document.getElementById("openSide").addEventListener("change",(ev)=>{ openUserSide=ev.target.value; openingsStop(); openingsSetStep(0); });
     document.getElementById("openMode").addEventListener("click",()=>openingsSetMode(openMode==="play"?"view":"play"));
     document.getElementById("openFilterBtn").addEventListener("click",(ev)=>{
-      const card=document.querySelector("#openingsContainer .content-card");
-      const open=card.classList.toggle("filters-open");
+      const open=document.getElementById("openTopbar").classList.toggle("filters-open");
       ev.currentTarget.setAttribute("aria-expanded",open?"true":"false");
       if(open) document.getElementById("openSearch").focus();
     });
