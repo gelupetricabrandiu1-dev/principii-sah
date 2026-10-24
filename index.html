@@ -1178,6 +1178,7 @@ button.btn.color-pick-btn:hover{background:var(--accent-soft); filter:none;}
           <div class="open-end-note" id="quizEndNote"></div>
           <div class="open-end-btns">
             <button class="open-restart" id="quizNextBtn" type="button">Următoarea →</button>
+            <button class="open-restart secondary" id="quizRetryBtn" type="button" hidden>↺ Repetă puzzelul</button>
             <button class="open-restart secondary" id="quizRepeatBtn" type="button" hidden>🔁 Repetă necunoscutele</button>
           </div>
         </div>
@@ -6451,6 +6452,7 @@ function quizFinish(){
   document.getElementById("quizEnd").hidden=false;
   document.getElementById("quizDontKnowBtn").disabled=true;
   document.getElementById("quizRepeatBtn").hidden=!quizUnknownKeys().length;
+  document.getElementById("quizRetryBtn").hidden=!(quizMistakes>0 && !quizUnknown);
   quizSay("","");
   quizRenderStats();
 }
@@ -6597,6 +6599,11 @@ function quizGiveUp(){
   while(quizStep<e.moves.length) quizApply(e.moves[quizStep]);
   quizFinish();
 }
+/* după o greșeală: repetă același puzzel; dacă iese perfect, bifa devine verde și intră în statistică */
+function quizRetry(){
+  if(!quizList.length) return;
+  quizBegin();
+}
 /* sugerează un singur puzzel, la întâmplare, din filtrul ales */
 function quizSuggest(){
   const pool=quizPool();
@@ -6622,6 +6629,7 @@ function quizInit(){
   });
   document.getElementById("quizQuitBtn").addEventListener("click",quizReset);
   document.getElementById("quizDontKnowBtn").addEventListener("click",quizGiveUp);
+  document.getElementById("quizRetryBtn").addEventListener("click",quizRetry);
   document.getElementById("quizRepeatBtn").addEventListener("click",()=>{
     quizReset();
     quizPoolSel="necunoscute";
