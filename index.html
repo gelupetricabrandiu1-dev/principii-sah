@@ -764,6 +764,22 @@ button.btn.color-pick-btn:hover{background:var(--accent-soft); filter:none;}
   .page-menu-btn .pm-caret{color:var(--text-dim);}
   .top h1{font-size:1.5rem;}
 }
+
+/* laptop / desktop: board fixed on the left, as tall as the screen; everything else in the right column */
+@media (min-width:1000px){
+  body.desk-board{padding-left:calc(var(--bsz,560px) + 24px + 16px + 28px);}
+  body.desk-board .board-card{position:fixed; top:16px; left:16px; z-index:30; width:calc(var(--bsz,560px) + 24px); max-height:calc(100vh - 32px); overflow-y:auto; padding:12px; gap:10px;}
+  body.desk-board .board-card .board-outer,
+  body.desk-board #openingsContainer .board-card .board-outer{width:var(--bsz,560px); max-width:none !important;}
+  body.desk-board .main,
+  body.desk-board .game-wrap.show,
+  body.desk-board #openingsContainer.show{grid-template-columns:1fr;}
+  body.desk-board #openFs{display:none;}
+  body.desk-board .board-card .actions .btn{flex:1 1 0;}
+  body.desk-board .open-play-row{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
+  body.desk-board .open-play-row .btn,
+  body.desk-board .open-play-row select{min-height:52px; border-radius:14px; font-weight:600;}
+}
 </style>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Public+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
@@ -3265,6 +3281,58 @@ function updatePageMenuLabel(){
   if(lb&&b) lb.textContent=pageTabParts(b).name;
   document.querySelectorAll(".page-tile").forEach(tl=>tl.classList.toggle("active",Number(tl.dataset.page)===currentPage));
 }
+/* laptop / desktop: the board stays fixed on the left and fills the screen height;
+   panels that would make the board card taller move to the right-hand column */
+let deskMoves=null;
+function fitBoardDesktop(){
+  const root=document.documentElement;
+  if(!document.body.classList.contains("desk-board")){ root.style.removeProperty("--bsz"); return; }
+  const card=[...document.querySelectorAll(".board-card")].find(c=>c.getClientRects().length>0);
+  if(!card) return;
+  for(let k=0;k<2;k++){
+    const outer=card.querySelector(".board-outer");
+    const cs=getComputedStyle(card);
+    let extra=parseFloat(cs.paddingTop)+parseFloat(cs.paddingBottom), n=0;
+    [...card.children].forEach(ch=>{
+      if(ch===outer || !ch.getClientRects().length) return;
+      extra+=ch.getBoundingClientRect().height; n++;
+    });
+    extra+=n*(parseFloat(cs.rowGap)||0);
+    const byH=window.innerHeight-32-extra;
+    const byW=window.innerWidth-16-24-28-16-380;
+    root.style.setProperty("--bsz",Math.max(320,Math.floor(Math.min(byH,byW)))+"px");
+  }
+}
+function deskLayoutInit(){
+  const spec=[
+    ["#feedback",".main .content-card"],
+    ["#hintPanel","#page5Container .game-log-card"],
+    ["#page5Container .elo-row","#page5Container .game-log-card"],
+    ["#page5Container .game-level-row","#page5Container .game-log-card"],
+    ["#openingsContainer .open-play-row","#openingsContainer .content-card"],
+    ["#openPlayMsg","#openingsContainer .content-card"]
+  ];
+  deskMoves=spec.map(([sel,target])=>{
+    const el=document.querySelector(sel), t=document.querySelector(target);
+    if(!el||!t) return null;
+    const ph=document.createComment("desk-slot");
+    el.parentNode.insertBefore(ph,el);
+    return {el,ph,t};
+  }).filter(Boolean);
+  const mq=window.matchMedia("(min-width:1000px)");
+  const apply=()=>{
+    if(mq.matches) [...deskMoves].reverse().forEach(m=>m.t.insertBefore(m.el,m.t.firstChild));
+    else deskMoves.forEach(m=>m.ph.parentNode.insertBefore(m.el,m.ph));
+    document.body.classList.toggle("desk-board",mq.matches);
+    fitBoardDesktop();
+  };
+  if(mq.addEventListener) mq.addEventListener("change",apply); else mq.addListener(apply);
+  let rt=0;
+  window.addEventListener("resize",()=>{ clearTimeout(rt); rt=setTimeout(fitBoardDesktop,60); });
+  window.addEventListener("load",fitBoardDesktop);
+  if(document.fonts && document.fonts.ready) document.fonts.ready.then(fitBoardDesktop);
+  apply();
+}
 function pageMenuInit(){
   const btn=document.getElementById("pageMenuBtn");
   const ov=document.getElementById("pageMenuOverlay");
@@ -3330,6 +3398,7 @@ function applyPageVisibility(){
   document.getElementById("openingsContainer").classList.toggle("show",isOpen);
   if(!isOpen) openingsStop();
   renderTechniqueFilterSelect();
+  setTimeout(fitBoardDesktop,0);
 }
 
 function loadProgress(){
@@ -8080,6 +8149,7 @@ function boot(){
   renderTechniqueFilterSelect();
   buildPageSelect();
   pageMenuInit();
+  deskLayoutInit();
   diagInit();
   fsInit();
   openFsInit();
