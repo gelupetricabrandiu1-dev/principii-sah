@@ -1217,6 +1217,7 @@ button.btn.color-pick-btn:hover{background:var(--accent-soft); filter:none;}
           <option value="toate">Toate din nivel</option>
           <option value="exersat">Doar cele de exersat</option>
           <option value="netestat">Doar cele netestate</option>
+          <option value="folositoare">Doar cele folositoare (+)</option>
         </select>
         <div class="quiz-sum" id="quizPoolInfo"></div>
         <button class="btn primary" id="quizStartBtn" type="button">▶ Începe testul</button>
@@ -6301,10 +6302,11 @@ function quizShuffle(a){
   return b;
 }
 function quizPool(){
-  const st=quizLoadStats();
+  const st=quizLoadStats(), rate=rateLoad();
   return OPENINGS_DATA.map((e,i)=>i).filter(i=>{
     const e=OPENINGS_DATA[i];
     if(e.end==="theory" || !quizInLevel(e,quizLevelSel)) return false;
+    if(quizPoolSel==="folositoare") return rate[openingsKey(i)]==="+";
     const stt=quizStatusOf(st[openingsKey(i)]);
     if(quizPoolSel==="exersat") return stt==="de exersat";
     if(quizPoolSel==="netestat") return stt==="netestată";
