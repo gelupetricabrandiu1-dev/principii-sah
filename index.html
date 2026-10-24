@@ -1215,12 +1215,12 @@ button.btn.color-pick-btn:hover{background:var(--accent-soft); filter:none;}
         <div class="quiz-label">Ce testez</div>
         <select class="lang-select" id="quizPool" aria-label="Ce testez">
           <option value="toate">Toate din nivel</option>
-          <option value="exersat">Doar cele de exersat</option>
-          <option value="netestat">Doar cele netestate</option>
+          <option value="netestat">Doar cele fără rezultat perfect</option>
           <option value="folositoare">Doar cele folositoare (+)</option>
         </select>
         <div class="quiz-sum" id="quizPoolInfo"></div>
         <button class="btn primary" id="quizStartBtn" type="button">▶ Începe testul</button>
+        <button class="btn" id="quizSuggestBtn" type="button">🎲 Sugerează un puzzel la întâmplare</button>
       </div>
       <div class="quiz-stats" id="quizStats"></div>
     </div>
@@ -6283,13 +6283,11 @@ let quizList=[], quizPos=0, quizG=null, quizStep=0, quizMistakes=0, quizOk=0, qu
 var quizReady=false;
 function quizLoadStats(){ try{ return JSON.parse(ppGet(QUIZ_KEY)||"{}")||{}; }catch(e){ return {}; } }
 function quizSaveStats(o){ try{ ppSet(QUIZ_KEY,JSON.stringify(o)); }catch(e){} }
-/* cunoscută bine: cel puțin 2 încercări, ultima fără greșeli și cel puțin 70% fără greșeli; de exersat: ultima cu greșeli sau sub 50% */
+/* statistica reține doar liniile făcute perfect, fără nicio greșeală:
+   cunoscută = cel puțin 2 rezultate perfecte; în progres = un rezultat perfect; netestată = niciunul */
 function quizStatusOf(s){
-  if(!s || !s.n) return "netestată";
-  const r=s.p/s.n;
-  if(s.n>=2 && s.last===1 && r>=0.7) return "cunoscută";
-  if(s.last===0 || r<0.5) return "de exersat";
-  return "în progres";
+  if(!s || !s.p) return "netestată";
+  return s.p>=2 ? "cunoscută" : "în progres";
 }
 function quizInLevel(e,lv){
   if(lv==="toate") return true;
@@ -6308,7 +6306,6 @@ function quizPool(){
     if(e.end==="theory" || !quizInLevel(e,quizLevelSel)) return false;
     if(quizPoolSel==="folositoare") return rate[openingsKey(i)]==="+";
     const stt=quizStatusOf(st[openingsKey(i)]);
-    if(quizPoolSel==="exersat") return stt==="de exersat";
     if(quizPoolSel==="netestat") return stt==="netestată";
     return true;
   });
@@ -6422,12 +6419,10 @@ function quizBoardClick(ev){
   quizMark();
 }
 function quizRecord(i,mistakes){
+  if(mistakes>0) return;
   const st=quizLoadStats(), k=openingsKey(i);
-  const s=st[k]||{n:0,p:0,m:0,last:0};
-  s.n++;
-  if(mistakes===0) s.p++;
-  s.m+=mistakes;
-  s.last=mistakes===0?1:0;
+  const s=st[k]||{p:0};
+  s.p++;
   s.t=Date.now();
   st[k]=s;
   quizSaveStats(st);
@@ -6443,7 +6438,7 @@ function quizFinish(){
   document.getElementById("quizEndTitle").textContent=last
     ? "Test terminat: "+quizOk+" din "+quizList.length+" fără greșeli"
     : (quizMistakes===0?"Fără greșeli ✓":"Ai greșit de "+quizMistakes+" "+(quizMistakes===1?"dată":"ori"));
-  document.getElementById("quizEndNote").textContent=last?"Vezi statistica de mai jos.":"";
+  document.getElementById("quizEndNote").textContent=(quizMistakes>0?"Linia nu intră în statistică: se contorizează doar liniile făcute fără greșeli. ":"")+(last?"Vezi statistica de mai jos.":"");
   document.getElementById("quizNextBtn").textContent=last?"↻ Test nou":"Următoarea →";
   document.getElementById("quizEnd").hidden=false;
   quizSay("","");
@@ -6500,19 +6495,19 @@ function quizBandSet(i,reveal){
 function quizRenderStats(){
   const box=document.getElementById("quizStats");
   if(!box) return;
-  const st=quizLoadStats(), counts={"cunoscută":0,"în progres":0,"de exersat":0,"netestată":0}, rows=[];
+  const st=quizLoadStats(), counts={"cunoscută":0,"în progres":0,"netestată":0}, rows=[];
   OPENINGS_DATA.forEach((e,i)=>{
     if(e.end==="theory") return;
     const s=st[openingsKey(i)], stt=quizStatusOf(s);
     counts[stt]++;
-    if(s && s.n) rows.push({e,s,stt});
+    if(s && s.p) rows.push({e,s,stt});
   });
-  const weak=rows.filter(r=>r.stt==="de exersat").sort((a,b)=>(a.s.p/a.s.n)-(b.s.p/b.s.n)).slice(0,15);
-  const strong=rows.filter(r=>r.stt==="cunoscută").sort((a,b)=>(b.s.p/b.s.n)-(a.s.p/a.s.n)||b.s.n-a.s.n).slice(0,15);
+  const known=rows.filter(r=>r.stt==="cunoscută").sort((a,b)=>b.s.p-a.s.p).slice(0,20);
+  const progress=rows.filter(r=>r.stt==="în progres").slice(0,20);
   box.textContent="";
   const sum=document.createElement("p");
   sum.className="quiz-sum";
-  sum.textContent="Cunoscute bine: "+counts["cunoscută"]+" · În progres: "+counts["în progres"]+" · De exersat: "+counts["de exersat"]+" · Netestate: "+counts["netestată"];
+  sum.textContent="Cunoscute bine: "+counts["cunoscută"]+" · În progres: "+counts["în progres"]+" · Netestate: "+counts["netestată"];
   box.appendChild(sum);
   const list=(title,items)=>{
     const h=document.createElement("h4"); h.textContent=title; box.appendChild(h);
@@ -6520,13 +6515,21 @@ function quizRenderStats(){
     const ol=document.createElement("ol");
     items.forEach(r=>{
       const li=document.createElement("li");
-      li.textContent=r.e.op+" · "+r.s.p+" din "+r.s.n+" fără greșeli";
+      li.textContent=r.e.op+" · perfectă de "+r.s.p+" "+(r.s.p===1?"dată":"ori");
       ol.appendChild(li);
     });
     box.appendChild(ol);
   };
-  list("De exersat",weak);
-  list("Cunoscute bine",strong);
+  list("Cunoscute bine",known);
+  list("În progres",progress);
+}
+/* sugerează un singur puzzel, la întâmplare, din filtrul ales */
+function quizSuggest(){
+  const pool=quizPool();
+  if(!pool.length){ quizSay("Nu sunt deschideri pentru filtrul ales.","bad"); return; }
+  quizList=[pool[Math.floor(Math.random()*pool.length)]];
+  quizPos=0; quizOk=0;
+  quizBegin();
 }
 function quizInit(){
   quizReady=true;
@@ -6537,6 +6540,7 @@ function quizInit(){
   document.querySelectorAll("#quizNameChips button").forEach(b=>b.addEventListener("click",()=>{ quizShowName=b.dataset.show==="1"; quizMarkChips(); }));
   document.getElementById("quizPool").addEventListener("change",(ev)=>{ quizPoolSel=ev.target.value; quizPoolInfo(); });
   document.getElementById("quizStartBtn").addEventListener("click",quizStart);
+  document.getElementById("quizSuggestBtn").addEventListener("click",quizSuggest);
   document.getElementById("quizNextBtn").addEventListener("click",()=>{
     if(quizPos===quizList.length-1){ quizReset(); return; }
     quizPos++;
