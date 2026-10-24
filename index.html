@@ -712,7 +712,9 @@ button.btn.color-pick-btn:hover{background:var(--accent-soft); filter:none;}
 .open-pick-row select.rate-minus, .lang-select option.rate-minus{color:var(--bad);}
 .player-box{display:flex; flex-direction:column; gap:10px; width:100%;}
 .player-add{display:flex; flex-direction:column; gap:8px;}
-.player-add input[type=text]{padding:10px 12px; border-radius:12px; border:1px solid var(--border); background:var(--surface-2); color:var(--text); font-family:inherit; font-size:.95rem;}
+.player-box input[type=text]{padding:10px 12px; border-radius:12px; border:1px solid var(--border); background:var(--surface-2); color:var(--text); font-family:inherit; font-size:.95rem;}
+.sync-status{font-size:.85rem; color:var(--text-dim); word-break:break-word;}
+.sync-status b{color:var(--text); font-family:monospace; font-weight:600; word-break:break-all;}
 #openingsContainer .open-name::before{content:"📖 ";}
 .open-pick-row{display:flex; gap:8px;}
 .open-pick-row select{flex:1 1 auto; min-width:0;}
@@ -952,6 +954,17 @@ button.btn.color-pick-btn:hover{background:var(--accent-soft); filter:none;}
         </div>
       </div>
       <div class="settings-row">
+        <label id="syncLabel">Sincronizare</label>
+        <div class="player-box">
+          <div id="syncStatus" class="sync-status">Sincronizarea nu e activată încă.</div>
+          <div class="sync-status">Codul jucătorului: <b id="syncCodeText"></b></div>
+          <button class="btn" id="syncCopyBtn" type="button">Copiază codul</button>
+          <input type="text" id="syncCodeIn" placeholder="Lipește codul de pe celălalt dispozitiv">
+          <button class="btn" id="syncUseBtn" type="button">Folosește codul</button>
+          <button class="btn" id="syncNowBtn" type="button">Sincronizează acum</button>
+        </div>
+      </div>
+      <div class="settings-row">
         <label id="volumeLabel">Volum</label>
         <div class="volume-row">
           <button class="volume-btn" id="volumeMuteBtn" type="button" title="Mut/nemut" aria-label="Mut/nemut">🔊</button>
@@ -1186,12 +1199,18 @@ button.btn.color-pick-btn:hover{background:var(--accent-soft); filter:none;}
 <script>
 /* jucătorii: fiecare jucător își are progresul sub cheia "cheie@jucător"; progresul de până acum rămâne sub cheile simple
    (jucătorul implicit). Setările de dispozitiv (tema, limba, volumul, mărimea tablei) rămân comune. */
-const PLAYER_KEY="principii-sah-jucator", PLAYERS_KEY="principii-sah-jucatori";
-const DEVICE_KEYS=["sah-principii-theme","sah-principii-lang","sah-design-v2","sah-principii-volume","principii-sah-marime-tabla","sah-principii-page",PLAYER_KEY,PLAYERS_KEY];
+const PLAYER_KEY="principii-sah-jucator", PLAYERS_KEY="principii-sah-jucatori", SYNC_MAP_KEY="principii-sah-sync-coduri", STAMPS_KEY="principii-sah-sync-timp";
+const DEVICE_KEYS=["sah-principii-theme","sah-principii-lang","sah-design-v2","sah-principii-volume","principii-sah-marime-tabla","sah-principii-page",PLAYER_KEY,PLAYERS_KEY,SYNC_MAP_KEY,STAMPS_KEY];
+const SYNC_CONFIG=null; /* aici se lipește configurația Firebase, ca obiect (vezi pașii de instalare) */
+const SYNC_VERSION="10.12.2";
+let syncDb=null, syncFs=null, syncTimer=null, syncRunning=false;
 function playerName(){ try{ return localStorage.getItem(PLAYER_KEY)||""; }catch(e){ return ""; } }
 function ppKey(k){ const p=playerName(); return (!p||DEVICE_KEYS.indexOf(k)>=0)?k:k+"@"+p; }
 function ppGet(k){ return localStorage.getItem(ppKey(k)); }
-function ppSet(k,v){ localStorage.setItem(ppKey(k),v); }
+function ppSet(k,v){
+  localStorage.setItem(ppKey(k),v);
+  if(DEVICE_KEYS.indexOf(k)<0){ stampSet(ppKey(k)); syncSoon(); }
+}
 const PRINCIPLES = [
 {id:1,title:"Controlează centrul tăblii",fen:"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",turn:"w",correct:[["e2","e4"],["d2","d4"]],
 text:"Pătratele centrale (d4, d5, e4, e5) sunt cele mai importante de pe tablă: piesele plasate spre centru controlează mai multe câmpuri și au mai multă mobilitate, în timp ce cele de la margine influențează mult mai puțin jocul. De aceea, primele mutări bune ocupă sau presează centrul.",
@@ -8529,10 +8548,125 @@ function playerDelete(){
   playersSave(playersLoad().filter(n=>n!==name));
   if(playerName()===name) playerSwitch(""); else playersFill();
 }
+/* sincronizare între dispozitive (Firebase Firestore). Fără configurație (SYNC_CONFIG = null) aplicația merge doar pe dispozitivul acesta.
+   Fiecare jucător are un cod de sincronizare: același cod pe telefon și pe laptop = același progres.
+   La conflict, pentru fiecare cheie câștigă modificarea cea mai nouă. */
+function stampsLoad(){ try{ return JSON.parse(localStorage.getItem(STAMPS_KEY)||"{}")||{}; }catch(e){ return {}; } }
+function stampsSave(o){ try{ localStorage.setItem(STAMPS_KEY,JSON.stringify(o)); }catch(e){} }
+function stampSet(fullKey){ const o=stampsLoad(); o[fullKey]=Date.now(); stampsSave(o); }
+function codesLoad(){ try{ return JSON.parse(localStorage.getItem(SYNC_MAP_KEY)||"{}")||{}; }catch(e){ return {}; } }
+function codesSave(o){ try{ localStorage.setItem(SYNC_MAP_KEY,JSON.stringify(o)); }catch(e){} }
+function syncCode(){ return codesLoad()[playerName()]||""; }
+function syncCodeNew(){
+  const a=new Uint8Array(16); crypto.getRandomValues(a);
+  return Array.from(a,b=>b.toString(16).padStart(2,"0")).join("");
+}
+function syncStatus(text){ const el=document.getElementById("syncStatus"); if(el) el.textContent=text; }
+function syncShowCode(){
+  const el=document.getElementById("syncCodeText");
+  if(el) el.textContent=syncCode()||"(se creează la prima sincronizare)";
+  if(!SYNC_CONFIG) syncStatus("Sincronizarea nu e activată încă (lipsește configurația Firebase).");
+}
+function syncSoon(){
+  if(!SYNC_CONFIG) return;
+  clearTimeout(syncTimer);
+  syncTimer=setTimeout(syncNow,3000);
+}
+function isProgressKey(k){
+  return (k.indexOf("sah-principii-")===0 || k.indexOf("principii-sah-")===0) && DEVICE_KEYS.indexOf(k)<0 && k.indexOf("@")<0;
+}
+/* progresul jucătorului activ, cheie cu cheie, cu ora ultimei modificări */
+function syncLocal(){
+  const player=playerName(), suf=player?"@"+player:"", st=stampsLoad(), out={};
+  for(let i=0;i<localStorage.length;i++){
+    const k=localStorage.key(i);
+    if(!k) continue;
+    let base=k;
+    if(player){ if(k.slice(-suf.length)!==suf) continue; base=k.slice(0,-suf.length); }
+    else if(k.indexOf("@")>=0) continue;
+    if(!isProgressKey(base)) continue;
+    out[base]={v:localStorage.getItem(k), t:st[k]||0};
+  }
+  return out;
+}
+async function syncInit(){
+  if(syncDb) return syncDb;
+  const app=await import("https://www.gstatic.com/firebasejs/"+SYNC_VERSION+"/firebase-app.js");
+  syncFs=await import("https://www.gstatic.com/firebasejs/"+SYNC_VERSION+"/firebase-firestore.js");
+  syncDb=syncFs.getFirestore(app.initializeApp(SYNC_CONFIG));
+  return syncDb;
+}
+async function syncNow(){
+  if(!SYNC_CONFIG) return;
+  if(syncRunning){ syncSoon(); return; }
+  if(!syncCode()){ const c=codesLoad(); c[playerName()]=syncCodeNew(); codesSave(c); }
+  syncShowCode();
+  const code=syncCode(), player=playerName(), suf=player?"@"+player:"";
+  syncRunning=true;
+  syncStatus("Se sincronizează…");
+  try{
+    const db=await syncInit();
+    const ref=syncFs.doc(db,"progres",code);
+    const snap=await syncFs.getDoc(ref);
+    const remote=(snap.exists() && snap.data().data)||{};
+    const local=syncLocal(), st=stampsLoad();
+    const pulled={}; let changed=false;
+    /* de pe alt dispozitiv: cheile mai noi decât ale noastre */
+    Object.keys(remote).forEach(base=>{
+      const r=remote[base], l=local[base];
+      if(r.v===null || r.v===undefined) return;
+      if(!l || (r.t||0)>(l.t||0)){
+        localStorage.setItem(base+suf,r.v);
+        st[base+suf]=r.t||0;
+        pulled[base]=true; changed=true;
+      }
+    });
+    /* de aici: cheile mai noi decât cele de pe server (sau care nu există încă pe server) */
+    const push={};
+    Object.keys(local).forEach(base=>{
+      if(pulled[base]) return;
+      const r=remote[base], l=local[base];
+      if(!r || (l.t||0)>(r.t||0)){
+        const t=l.t||Date.now();
+        st[base+suf]=t;
+        push[base]={v:l.v,t:t};
+      }
+    });
+    stampsSave(st);
+    if(Object.keys(push).length){
+      await syncFs.setDoc(ref,{data:push,updated:syncFs.serverTimestamp()},{merge:true});
+    }
+    if(changed){
+      syncStatus("Progres nou primit de pe alt dispozitiv: reîncarc pagina…");
+      setTimeout(()=>location.reload(),800);
+    } else {
+      syncStatus("Sincronizat la "+new Date().toLocaleTimeString("ro-RO",{hour:"2-digit",minute:"2-digit"}));
+    }
+  }catch(e){
+    syncStatus("Nu s-a putut sincroniza. Verifică internetul și codul.");
+  }finally{
+    syncRunning=false;
+  }
+}
+function syncCopy(){
+  const code=syncCode();
+  if(!code){ syncStatus("Codul se creează la prima sincronizare."); return; }
+  try{ navigator.clipboard.writeText(code); syncStatus("Codul a fost copiat."); }catch(e){ syncStatus("Nu am putut copia. Selectează codul și copiază-l manual."); }
+}
+function syncUseCode(){
+  const inp=document.getElementById("syncCodeIn");
+  const code=(inp.value||"").trim().toLowerCase();
+  if(!/^[0-9a-f]{20,64}$/.test(code)){ syncStatus("Codul nu e valid. Copiază-l exact de pe celălalt dispozitiv."); return; }
+  const c=codesLoad(); c[playerName()]=code; codesSave(c);
+  inp.value="";
+  syncShowCode();
+  syncNow();
+}
 function openSettings(){
   renderThemeGrid();
   renderLangSelect();
   playersFill();
+  syncShowCode();
   document.getElementById("settingsOverlay").classList.add("show");
 }
 function closeSettings(){
@@ -8559,6 +8693,11 @@ function initSettings(){
     document.getElementById("playerAddBtn").addEventListener("click",playerAdd);
     document.getElementById("playerDelBtn").addEventListener("click",playerDelete);
   }
+  document.getElementById("syncCopyBtn").addEventListener("click",syncCopy);
+  document.getElementById("syncUseBtn").addEventListener("click",syncUseCode);
+  document.getElementById("syncNowBtn").addEventListener("click",syncNow);
+  document.addEventListener("visibilitychange",()=>{ if(document.visibilityState==="visible") syncSoon(); });
+  if(SYNC_CONFIG) setTimeout(syncNow,1500);
   document.getElementById("settingsOverlay").addEventListener("click",(e)=>{
     if(e.target.id==="settingsOverlay") closeSettings();
   });
