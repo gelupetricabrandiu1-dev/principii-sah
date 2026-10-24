@@ -723,9 +723,8 @@ button.btn.color-pick-btn:hover{background:var(--accent-soft); filter:none;}
 #quizContainer .board-outer{max-width:min(100%,420px)!important; margin:0 auto;}
 @media (max-width:760px){ #quizContainer{grid-template-columns:1fr;} }
 #quizBoardName[hidden]{display:none;}
-.quiz-marks{display:flex; flex-direction:column; gap:10px; margin:10px 0 4px;}
-.quiz-marks:empty{display:none;}
-.quiz-strip{display:flex; flex-wrap:wrap; justify-content:center; gap:6px;}
+.quiz-strip{display:flex; flex-wrap:wrap; justify-content:center; gap:6px; margin:10px 0 4px;}
+.quiz-strip:empty,.quiz-names:empty{display:none;}
 .quiz-cell{display:flex; flex-direction:column; align-items:center; gap:2px; min-width:36px; padding:4px; border-radius:12px;}
 .quiz-cell.current{background:var(--surface-2);}
 .quiz-num{font-size:.75rem; font-weight:700; color:var(--text-dim);}
@@ -733,7 +732,7 @@ button.btn.color-pick-btn:hover{background:var(--accent-soft); filter:none;}
 .quiz-tick.ok{background:var(--good); color:var(--on-accent);}
 .quiz-tick.bad{background:var(--bad); color:var(--on-accent);}
 .quiz-tick.unk{background:var(--accent); color:var(--on-accent);}
-.quiz-names{display:flex; flex-direction:column; gap:4px;}
+.quiz-names{display:flex; flex-direction:column; gap:4px; margin-top:8px;}
 .quiz-rowname{font-size:.9rem; color:var(--text); overflow-wrap:anywhere;}
 .quiz-rowname.current{font-weight:700;}
 .player-box{display:flex; flex-direction:column; gap:10px; width:100%;}
@@ -1183,12 +1182,13 @@ button.btn.color-pick-btn:hover{background:var(--accent-soft); filter:none;}
           </div>
         </div>
       </div>
+      <div class="open-board-name" id="quizBoardName" hidden><span class="obn-name"></span><span class="obn-meta"></span></div>
+      <div class="quiz-strip" id="quizStrip"></div>
       <div class="actions">
         <button class="btn" id="quizDontKnowBtn" type="button" disabled>🤷 Nu știu</button>
         <button class="btn" id="quizQuitBtn" type="button">■ Renunță la test</button>
       </div>
-      <div class="quiz-marks" id="quizMarks"></div>
-      <div class="open-board-name" id="quizBoardName" hidden><span class="obn-name"></span><span class="obn-meta"></span></div>
+      <div class="quiz-names" id="quizNames"></div>
       <div class="status-line">
         <span id="quizProgress"></span>
         <span id="quizScore"></span>
@@ -6506,13 +6506,10 @@ function quizReset(){
 /* lista verticală sub tablă: pentru fiecare puzzle, cifra, sub ea bifa verde ✓ (corect) sau ✗ roșu (greșit), și numele.
    Numele apare la puzzle-urile terminate și la cel curent (dacă nu l-ai ascuns); cele care urmează rămân ascunse */
 function quizRenderMarks(){
-  const box=document.getElementById("quizMarks");
-  if(!box) return;
-  box.textContent="";
-  const strip=document.createElement("div");
-  strip.className="quiz-strip";
-  const names=document.createElement("div");
-  names.className="quiz-names";
+  const strip=document.getElementById("quizStrip"), names=document.getElementById("quizNames");
+  if(!strip||!names) return;
+  strip.textContent="";
+  names.textContent="";
   quizList.forEach((i,k)=>{
     const r=quizResults[k], e=OPENINGS_DATA[i];
     const cell=document.createElement("div");
@@ -6532,8 +6529,6 @@ function quizRenderMarks(){
     name.textContent=(k+1)+". "+(show?e.op:(k===quizPos?"Deschidere ascunsă":"—"));
     names.appendChild(name);
   });
-  box.appendChild(strip);
-  box.appendChild(names);
 }
 /* aceeași bandă ca pe pagina Deschideri, sub tablă: numele și câte mutări are linia.
    Dacă ai ales „Ascunde până la final”, numele apare abia când termini linia */
