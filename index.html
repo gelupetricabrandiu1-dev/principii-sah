@@ -891,6 +891,7 @@ button.btn.color-pick-btn:hover{background:var(--accent-soft); filter:none;}
     <div class="open-filter">
       <input type="search" id="openSearch" placeholder="Caută (ex: Scoțiană, Siciliană, Vieneză)">
       <label class="open-toggle"><input type="checkbox" id="openAll"> Arată și liniile de teorie (fără mat)</label>
+      <label class="open-toggle"><input type="checkbox" id="openTodo"> Doar cele nejucate</label>
       <select class="lang-select" id="openLen" aria-label="Număr de mutări"></select>
     </div>
   </div>
@@ -5769,6 +5770,8 @@ function openingsFillSelect(){
   const sel=document.getElementById("openingSelect");
   const q=openingsFold((document.getElementById("openSearch").value||"").trim());
   const showAll=document.getElementById("openAll").checked;
+  const onlyTodo=document.getElementById("openTodo").checked;
+  const reps=repsLoad();
   const want=Number(document.getElementById("openLen").value||0);
   const MAX=400;
   const idx=[];
@@ -5777,6 +5780,7 @@ function openingsFillSelect(){
     if(!showAll && !q && e.end==="theory") continue;
     if(!openingsInLevel(e)) continue;
     if(want && Math.ceil(e.moves.length/2)!==want) continue;
+    if(onlyTodo && reps[openingsKey(i)]) continue;
     if(q){
       const txt=openingsFold(e.op+" "+(e.en||"")+" "+e.alias);
       if(!q.split(/\s+/).every(w=>txt.indexOf(w)>=0)) continue;
@@ -5788,7 +5792,8 @@ function openingsFillSelect(){
   if(idx.indexOf(openIdx)<0 && openingsInLevel(OPENINGS_DATA[openIdx])) idx.unshift(openIdx);
   sel.innerHTML=idx.map(i=>{
     const e=OPENINGS_DATA[i];
-    const label=e.op+(e.alias?" ("+e.alias+")":"")+" · "+openingsEndLabel(e)+" · "+Math.ceil(e.moves.length/2)+" mutări";
+    /* ✓ = linia a fost jucată de tine până la final cel puțin o dată */
+    const label=(reps[openingsKey(i)]?"✓ ":"")+e.op+(e.alias?" ("+e.alias+")":"")+" · "+openingsEndLabel(e)+" · "+Math.ceil(e.moves.length/2)+" mutări";
     return '<option value="'+i+'">'+label+'</option>';
   }).join("");
   sel.value=String(openIdx);
@@ -5890,7 +5895,7 @@ function openingsRender(){
   }
   if(openMode==="play"){
     if(openStep>=total){
-      if(!openDoneCounted){ openDoneCounted=true; repsRecord(openIdx); }
+      if(!openDoneCounted){ openDoneCounted=true; repsRecord(openIdx); openingsFillSelect(); }
       openingsMsg("Linia s-a încheiat. Ai jucat-o "+openingsTimes(repsCount(openIdx))+".","ok");
     } else if(g.turn()!==openUserSide){
       openingsMsg("Adversarul joacă…");
@@ -6117,6 +6122,12 @@ function openingsEnter(){
     sel.addEventListener("change",()=>{ openingsSet(Number(sel.value),0); openingsShowPrompt(); });
     document.getElementById("openSearch").addEventListener("input",openingsFillSelect);
     document.getElementById("openAll").addEventListener("change",openingsFillSelect);
+    const todoBox=document.getElementById("openTodo");
+    try{ todoBox.checked=localStorage.getItem("principii-sah-doar-nejucate")==="1"; }catch(e){}
+    todoBox.addEventListener("change",()=>{
+      try{ localStorage.setItem("principii-sah-doar-nejucate",todoBox.checked?"1":"0"); }catch(e){}
+      openingsFillSelect();
+    });
     const lenSel=document.getElementById("openLen");
     const counts={};
     OPENINGS_DATA.forEach(e=>{ const n=Math.ceil(e.moves.length/2); counts[n]=(counts[n]||0)+1; });
@@ -8490,7 +8501,6 @@ try{
   } else { boot(); }
 }catch(e){ boot(); }
 </script>
-
 <script>
 if("serviceWorker" in navigator){
   // a newly published version takes over by itself: reload once when the new service worker takes control
