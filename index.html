@@ -618,7 +618,7 @@ button.btn:disabled{opacity:.45; cursor:default;}
 .open-ev-total{font-size:.85rem; font-weight:600; color:var(--text-dim);}
 .open-ev-row{display:flex; justify-content:space-between; align-items:center; gap:10px; width:100%; min-height:44px; padding:8px 12px; border-radius:10px; border:1px solid var(--border); background:var(--surface-2); color:var(--text); font-family:'Public Sans',sans-serif; font-size:.9rem; text-align:left; cursor:pointer;}
 .open-ev-name{flex:1; min-width:0;}
-.open-ev-n{font-family:'JetBrains Mono',monospace; font-weight:600; color:var(--accent); white-space:nowrap;}
+.open-ev-n{font-family:'JetBrains Mono',monospace; font-size:.76rem; font-weight:600; color:var(--accent); white-space:nowrap; text-align:right;}
 .open-ev-empty{margin:0; font-size:.9rem; color:var(--text-dim);}
 @media (max-width:760px){
   #openingsContainer .content-card > div:first-child,
@@ -720,6 +720,7 @@ button.btn.color-pick-btn:hover{background:var(--accent-soft); filter:none;}
 .open-restart:active{transform:scale(.96);}
 .open-restart[hidden]{display:none;}
 .open-restart.secondary{background:var(--surface-2); color:var(--accent); box-shadow:inset 0 0 0 2px var(--accent);}
+.open-end-note{max-width:260px; font-size:.85rem; font-weight:600; color:var(--text-dim); line-height:1.3;}
 .open-end-btns{display:flex; flex-wrap:wrap; justify-content:center; gap:10px;}
 @media (prefers-reduced-motion: no-preference){
   .open-end:not([hidden]){animation:openEndIn .35s cubic-bezier(.2,1.4,.4,1) .45s both;}
@@ -992,6 +993,7 @@ button.btn.color-pick-btn:hover{background:var(--accent-soft); filter:none;}
         <div class="board" id="openBoard"></div>
         <div class="open-end" id="openEnd" hidden>
           <div class="open-end-title" id="openEndTitle"></div>
+          <div class="open-end-note" id="openEndNote">Repetarea se numără doar când joci tu linia.</div>
           <div class="open-end-btns">
             <button class="open-restart" id="openRestart" type="button">↻ Reia linia</button>
             <button class="open-restart secondary" id="openEndPlay" type="button">▶ Joacă linia</button>
@@ -5777,10 +5779,15 @@ function openingsRender(){
     const lr=list.getBoundingClientRect(), ar=act.getBoundingClientRect();
     list.scrollTop+=(ar.top-lr.top)-lr.height/2+ar.height/2;
   }
+  /* watched step by step from the first move to the last one: one "parcurgere" */
+  if(openMode!=="play" && total>0 && openStep>=total && openViewOk && !openDoneCounted){
+    openDoneCounted=true;
+    repsRecord(openIdx,VIEWS_KEY);
+  }
   if(openMode==="play"){
     if(openStep>=total){
       if(!openDoneCounted){ openDoneCounted=true; repsRecord(openIdx); }
-      openingsMsg("Linia s-a încheiat. Repetări: "+repsCount(openIdx)+".","ok");
+      openingsMsg("Linia s-a încheiat. Ai jucat-o "+openingsTimes(repsCount(openIdx))+".","ok");
     } else if(g.turn()!==openUserSide){
       openingsMsg("Adversarul joacă…");
       openPlayTimer=setTimeout(()=>{ openPlayTimer=null; openingsSetStep(openStep+1); },600);
@@ -5789,65 +5796,83 @@ function openingsRender(){
     }
   }
   openingsRepsShow();
+  openingsSaveState();
 }
-/* repetări: câte ori a fost jucată fiecare linie până la final (în modul „Joacă linia”), salvate pe acest dispozitiv */
+/* repetări, salvate pe acest dispozitiv:
+   „jucată” = linia jucată de tine până la final (modul „Joacă linia”),
+   „parcursă” = linia urmărită mutare cu mutare până la final (▶ sau „Redă tot”, fără salt cu ⏭) */
 const REPS_KEY="principii-sah-repetari";
-function repsLoad(){
-  try{ return JSON.parse(localStorage.getItem(REPS_KEY)||"{}")||{}; }catch(e){ return {}; }
+const VIEWS_KEY="principii-sah-parcurgeri";
+let openViewOk=false;
+function repsLoad(key){
+  try{ return JSON.parse(localStorage.getItem(key||REPS_KEY)||"{}")||{}; }catch(e){ return {}; }
 }
-function repsSave(o){
-  try{ localStorage.setItem(REPS_KEY,JSON.stringify(o)); }catch(e){}
+function repsSave(o,key){
+  try{ localStorage.setItem(key||REPS_KEY,JSON.stringify(o)); }catch(e){}
 }
 function openingsKey(i){ return OPENINGS_DATA[i].moves.join(" "); }
-function repsCount(i){ return repsLoad()[openingsKey(i)]||0; }
-function repsRecord(i){
-  const o=repsLoad(), k=openingsKey(i);
+/* "o dată", "de 2 ori", "de 20 de ori" */
+function openingsTimes(n){ return n===1?"o dată":"de "+n+((n%100===0||n%100>=20)?" de ori":" ori"); }
+function repsCount(i,key){ return repsLoad(key)[openingsKey(i)]||0; }
+function repsRecord(i,key){
+  const o=repsLoad(key), k=openingsKey(i);
   o[k]=(o[k]||0)+1;
-  repsSave(o);
+  repsSave(o,key);
 }
 function openingsRepsShow(){
+  const played=repsCount(openIdx), viewed=repsCount(openIdx,VIEWS_KEY);
   const el=document.getElementById("openReps");
-  if(el) el.innerHTML="Repetări până la final: <b>"+repsCount(openIdx)+"</b>";
+  if(el) el.innerHTML="Jucată: <b>"+played+"×</b> · Parcursă: <b>"+viewed+"×</b>";
+  const note=document.getElementById("openEndNote");
+  if(note) note.textContent=(played?"Ai jucat-o "+openingsTimes(played):"N-ai jucat-o încă")+" și "+(viewed?"ai parcurs-o "+openingsTimes(viewed):"n-ai parcurs-o încă")+".";
 }
 function openingsEvidence(){
   const box=document.getElementById("openEv");
-  const reps=repsLoad();
+  const reps=repsLoad(), views=repsLoad(VIEWS_KEY);
   const byKey={};
   OPENINGS_DATA.forEach((e,i)=>{ const k=e.moves.join(" "); if(byKey[k]===undefined) byKey[k]=i; });
-  const rows=Object.keys(reps).filter(k=>reps[k]>0 && byKey[k]!==undefined)
-    .map(k=>({i:byKey[k], n:reps[k]})).sort((a,b)=>b.n-a.n);
+  const keys=[...new Set([...Object.keys(reps),...Object.keys(views)])];
+  const rows=keys.filter(k=>byKey[k]!==undefined && ((reps[k]||0)+(views[k]||0))>0)
+    .map(k=>({i:byKey[k], p:reps[k]||0, v:views[k]||0}))
+    .sort((a,b)=>(b.p+b.v)-(a.p+a.v) || b.p-a.p);
   box.textContent="";
   if(!rows.length){
     const p=document.createElement("p");
     p.className="open-ev-empty";
-    p.textContent="Nicio linie nu a fost jucată până la final. Joacă o linie din „Joacă linia” ca să apară aici.";
+    p.textContent="Nicio linie nu a fost repetată până la final. Joac-o din „Joacă linia” sau parcurge-o mutare cu mutare ca să apară aici.";
     box.appendChild(p);
     return;
   }
-  const total=rows.reduce((s,r)=>s+r.n,0);
+  const tp=rows.reduce((s,r)=>s+r.p,0), tv=rows.reduce((s,r)=>s+r.v,0);
   const head=document.createElement("div");
   head.className="open-ev-total";
-  head.textContent=rows.length+(rows.length===1?" deschidere jucată":" deschideri jucate")+" · "+total+(total===1?" repetare în total":" repetări în total");
+  head.textContent=rows.length+(rows.length===1?" deschidere repetată":" deschideri repetate")+" · "+tp+" jucate · "+tv+" parcurse";
   box.appendChild(head);
   rows.forEach(r=>{
+    const e=OPENINGS_DATA[r.i];
     const b=document.createElement("button");
     b.type="button";
     b.className="open-ev-row";
     b.dataset.i=String(r.i);
     const nm=document.createElement("span");
     nm.className="open-ev-name";
-    nm.textContent=OPENINGS_DATA[r.i].op;
+    nm.textContent=e.op+" · "+Math.ceil(e.moves.length/2)+" mutări";
     const n=document.createElement("span");
     n.className="open-ev-n";
-    n.textContent=r.n+"×";
+    n.textContent=r.p+"× jucată · "+r.v+"× parcursă";
     b.append(nm,n);
     box.appendChild(b);
   });
 }
 function openingsSetStep(s){
   openSel=null;
+  const prev=openStep;
   openStep=Math.max(0,Math.min(s,OPENINGS_DATA[openIdx].moves.length));
-  if(openStep<OPENINGS_DATA[openIdx].moves.length) openDoneCounted=false;
+  /* a new repetition can only be counted after the line went back to its first move */
+  if(openStep===0) openDoneCounted=false;
+  /* a "parcurgere" counts only when the line is followed one move at a time (steps back are fine, jumps ahead are not) */
+  if(openStep===0) openViewOk=true;
+  else if(openStep>prev+1) openViewOk=false;
   openingsRender();
 }
 function openingsSet(i,s){
@@ -5910,9 +5935,33 @@ function openingsBoardClick(ev){
   if(own && own.color===openUserSide){ openSel=sq; openingsMarkSel(g); }
   else { openSel=null; openingsMarkSel(g); }
 }
+/* where you left off (line, move, mode, colour) is kept on this device and restored when the app opens again */
+const OPEN_STATE_KEY="principii-sah-deschideri-stare";
+function openingsSaveState(){
+  try{ localStorage.setItem(OPEN_STATE_KEY,JSON.stringify({k:openingsKey(openIdx), s:openStep, m:openMode, side:openUserSide})); }catch(e){}
+}
+function openingsRestoreState(){
+  let st=null;
+  try{ st=JSON.parse(localStorage.getItem(OPEN_STATE_KEY)||"null"); }catch(e){}
+  if(!st || !st.k) return;
+  const i=OPENINGS_DATA.findIndex(e=>e.moves.join(" ")===st.k);
+  if(i<0) return;
+  openIdx=i;
+  openStep=Math.max(0,Math.min(Number(st.s)||0,OPENINGS_DATA[i].moves.length));
+  openMode=st.m==="play"?"play":"view";
+  if(st.side==="w"||st.side==="b") openUserSide=st.side;
+  /* a line restored at its end was already counted; one restored halfway is not a full "parcurgere" */
+  openDoneCounted=openStep>=OPENINGS_DATA[i].moves.length;
+  openViewOk=openStep===0;
+  const mb=document.getElementById("openMode");
+  if(mb) mb.textContent=openMode==="play"?"👁 Vizualizare":"▶ Joacă linia";
+  const ss=document.getElementById("openSide");
+  if(ss) ss.value=openUserSide;
+}
 function openingsEnter(){
   if(window.matchMedia && window.matchMedia("(max-width:760px)").matches) window.scrollTo(0,0);
   if(!openBuilt){
+    openingsRestoreState();
     buildBoardDom(openBoardEl);
     const sel=document.getElementById("openingSelect");
     sel.addEventListener("change",()=>openingsSet(Number(sel.value),0));
@@ -5961,6 +6010,23 @@ function openingsEnter(){
       if(b){ openingsStop(); openingsSetStep(Number(b.dataset.i)); }
     });
     openBoardEl.addEventListener("click",openingsBoardClick);
+    /* laptop: a piece can also be dragged with the mouse (press on the piece, release on the target square) */
+    let dragFrom=null;
+    openBoardEl.addEventListener("pointerdown",(ev)=>{
+      if(openMode!=="play" || ev.pointerType==="touch") return;
+      const s=ev.target.closest(".sq");
+      dragFrom=s?s.dataset.sq:null;
+    });
+    window.addEventListener("pointerup",(ev)=>{
+      if(!dragFrom) return;
+      const from=dragFrom; dragFrom=null;
+      const el=document.elementFromPoint(ev.clientX,ev.clientY);
+      const to=el && el.closest ? el.closest("#openBoard .sq") : null;
+      if(!to || to.dataset.sq===from) return; /* a plain click is handled by the click listener */
+      const fromEl=openBoardEl.querySelector('.sq[data-sq="'+from+'"]');
+      if(openSel!==from) openingsBoardClick({target:fromEl});
+      if(openSel===from) openingsBoardClick({target:to});
+    });
     document.getElementById("openLevel").addEventListener("click",(ev)=>{
       const b=ev.target.closest("button[data-lv]");
       if(b) openingsSetLevel(b.dataset.lv);
