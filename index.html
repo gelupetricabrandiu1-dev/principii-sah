@@ -6717,7 +6717,7 @@ function statsRender(){
   rows.sort((a,b)=>(b.pct-a.pct)||((b.s.ok+b.s.bad)-(a.s.ok+a.s.bad)));
   const tot=ok+bad;
   document.getElementById("statsSummary").textContent = tot
-    ? "Total: "+ok+" făcute perfect din "+tot+" linii terminate ("+Math.round(ok*100/tot)+"%). Deschideri încercate: "+rows.length+" din "+OPENINGS_DATA.filter(e=>e.end!=="theory").length+"."
+    ? "Total: "+ok+" făcute perfect din "+tot+" linii terminate ("+Math.round(ok*100/tot)+"%). Linii încercate: "+rows.length+" din "+OPENINGS_DATA.filter(e=>e.end!=="theory").length+"."
     : "Nicio linie terminată încă. Rezultatele apar aici după un test sau după o linie jucată până la capăt.";
   const t=document.getElementById("statsTable");
   t.textContent="";
@@ -6732,7 +6732,7 @@ function statsRender(){
   t.appendChild(head);
   rows.forEach(({e,s,pct})=>{
     const tr=document.createElement("tr");
-    [e.op, String(s.ok), String(s.bad), pct===null?"—":pct+"%"].forEach((c,k)=>{
+    [e.op+" · "+e.sans.slice(0,4).join(" "), String(s.ok), String(s.bad), pct===null?"—":pct+"%"].forEach((c,k)=>{
       const td=document.createElement("td");
       td.textContent=c;
       if(k) td.className="num";
