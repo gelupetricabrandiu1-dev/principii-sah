@@ -486,6 +486,7 @@ h1,h2,h3{font-family:'Fraunces',Georgia,serif; margin:0; text-wrap:balance;}
 .capture-side:last-child{justify-content:flex-end;}
 .capture-side:last-child .cap-piece{color:var(--text-dim);}
 .capture-side .cap-score{font-family:'JetBrains Mono',monospace; font-size:.78rem; font-weight:700; margin-left:6px; color:var(--good); white-space:nowrap;}
+.capture-side .cap-score.cap-lost{color:var(--bad);}
 .game-level-row{display:flex; flex-direction:column; gap:5px; padding:10px 12px; border-radius:12px; background:var(--surface-2); border:1px solid var(--border);}
 .game-level-row .glr-top{display:flex; align-items:baseline; justify-content:space-between; gap:8px;}
 .game-level-row .glr-label{font-size:.8rem; color:var(--text-dim);}
@@ -5816,9 +5817,9 @@ function renderCaptures(){
   const oppGlyph = humanColor==="w"?PIECE_GLYPH:PIECE_GLYPH_W;
   const ownGlyph = humanColor==="w"?PIECE_GLYPH_W:PIECE_GLYPH;
   if(userEl) userEl.innerHTML=byUser.map(t=>'<span class="cap-piece">'+oppGlyph[t]+'</span>').join("")
-    +(diff>0?'<span class="cap-score">+'+diff+'</span>':'');
+    +'<span class="cap-score" title="Puncte capturate de tine">+'+userScore+'</span>';
   if(engineEl) engineEl.innerHTML=byEngine.map(t=>'<span class="cap-piece">'+ownGlyph[t]+'</span>').join("")
-    +(diff<0?'<span class="cap-score">+'+(-diff)+'</span>':'');
+    +'<span class="cap-score cap-lost" title="Puncte pierdute de tine">+'+engineScore+'</span>';
 }
 
 function gameStatusText(){
