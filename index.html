@@ -7114,27 +7114,15 @@ function asmGroups(){
   const groups=new Map();
   OPENINGS_DATA.forEach(e=>{
     if(!asmInLevel(e)) return;
-    const k=e.sans.slice(0,4).join(" ");
-    if(!groups.has(k)) groups.set(k,{key:k, prefix:asmNumbered(e.sans,4), lines:[]});
+    const k=e.sans.slice(0,6).join(" ");
+    if(!groups.has(k)) groups.set(k,{key:k, prefix:asmNumbered(e.sans,6), lines:[]});
     groups.get(k).lines.push(e);
   });
-  const out=[...groups.values()];
-  out.forEach(g=>{
-    const sub=new Map();
-    g.lines.forEach(e=>{
-      const k=e.sans.slice(0,6).join(" ");
-      if(!sub.has(k)) sub.set(k,{key:k, prefix:asmNumbered(e.sans,6), ops:[], n:0});
-      const s=sub.get(k);
-      s.ops.push(e.op);
-      s.n++;
-    });
-    /* doar subgrupurile cu cel puțin 3 linii; grupul rămâne doar cu liniile lor */
-    const kept=[...sub.values()].filter(s=>s.n>=3);
-    const keep=new Set(kept.map(s=>s.key));
-    g.subs=kept.map(s=>({prefix:s.prefix, ops:[...new Set(s.ops)]}));
-    g.lines=g.lines.filter(e=>keep.has(e.sans.slice(0,6).join(" ")));
-  });
-  return out.filter(g=>g.subs.length>0).sort((a,b)=>b.lines.length-a.lines.length);
+  /* începuturi cu primele 3 mutări ale fiecărei părți identice; cel puțin 2 linii ca să fie o asemănare */
+  return [...groups.values()]
+    .filter(g=>g.lines.length>=2)
+    .map(g=>({key:g.key, prefix:g.prefix, lines:g.lines, subs:[{prefix:g.prefix, ops:[...new Set(g.lines.map(e=>e.op))]}]}))
+    .sort((a,b)=>b.lines.length-a.lines.length);
 }
 /* deschide direct prima linie a deschiderii, în modul Joacă */
 function asmPlay(name){
@@ -7166,7 +7154,7 @@ function asmDetailRender(g){
   box.appendChild(h);
   const sub=document.createElement("p");
   sub.className="quiz-sum";
-  sub.textContent=g.lines.length+" linii. Subgrupele se deosebesc de la mutarea a 3-a:";
+  sub.textContent=g.lines.length+" linii cu aceleași primele 3 mutări:";
   box.appendChild(sub);
   g.subs.forEach(s=>{
     const card=document.createElement("div");
@@ -7194,7 +7182,7 @@ function asmRender(){
   document.querySelectorAll("#asmLevel button").forEach(b=>b.classList.toggle("active",b.dataset.lv===asmLevel));
   const groups=asmGroups();
   const total=groups.reduce((s,g)=>s+g.lines.length,0);
-  document.getElementById("asmSummary").textContent=groups.length+" grupuri cu cel puțin 3 linii, care cuprind "+total+" linii. Liniile din același grup încep identic.";
+  document.getElementById("asmSummary").textContent=groups.length+" începuturi cu primele 3 mutări asemănătoare, din "+total+" linii.";
   const t=document.getElementById("asmTable");
   t.textContent="";
   if(asmSelected && !groups.some(g=>g.key===asmSelected)) asmSelected=null;
