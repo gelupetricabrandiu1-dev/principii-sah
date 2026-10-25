@@ -772,9 +772,10 @@ body.desk-board.stats-page-active .wrap{max-width:960px;}
 .h2h-item .btn{align-self:flex-start;}
 .stats-table td.name div{overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
 .h2h-counter{font-size:.8rem; color:var(--text-dim);}
-.game-opening{font-size:.85rem; color:var(--text-dim); text-align:center; padding:6px 6px 0; min-height:1.5em;}
-.game-open-title{color:var(--text); font-weight:600; margin-bottom:2px;}
-.game-open-level{margin-top:2px; line-height:1.4;}
+.game-opening{font-size:.92rem; color:var(--text); text-align:left; margin-top:8px; padding:10px 12px; border-radius:12px; background:var(--surface); border:1px solid var(--border); line-height:1.45;}
+.game-open-title{color:var(--accent); font-weight:700; margin-bottom:4px;}
+.game-open-level{margin-top:3px;}
+.game-open-level b{font-weight:700;}
 .asm-row{display:flex; justify-content:space-between; align-items:center; gap:8px;}
 .asm-row span{font-size:.88rem;}
 .player-box{display:flex; flex-direction:column; gap:10px; width:100%;}
@@ -6042,7 +6043,7 @@ function gameUpdateOpening(){
     if(!names.length) return;
     const row=document.createElement("div");
     row.className="game-open-level";
-    row.textContent=levels[lv]+": "+names.join(", ");
+    row.innerHTML="<b>"+levels[lv]+":</b> "+names.map(n=>n.replace(/&/g,"&amp;").replace(/</g,"&lt;")).join(", ");
     box.appendChild(row);
   });
 }
