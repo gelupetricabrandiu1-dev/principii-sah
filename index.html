@@ -741,10 +741,10 @@ button.btn.color-pick-btn:hover{background:var(--accent-soft); filter:none;}
 .stats-table{width:100%; border-collapse:collapse; font-size:.9rem;}
 .stats-table th, .stats-table td{padding:7px 8px; border-bottom:1px solid var(--border); text-align:left; vertical-align:top;}
 .stats-table th{color:var(--text-dim); font-size:.8rem; text-transform:uppercase; letter-spacing:.03em;}
-.stats-table .num{text-align:right; white-space:nowrap;}
+.stats-table .num{text-align:right; white-space:nowrap; width:1%;}
 .stats-table td.name{max-width:0; width:100%; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
 .stats-pct{display:flex; align-items:center; justify-content:flex-end; gap:8px;}
-.stats-bar{display:flex; flex:1; min-width:60px; height:12px; border-radius:6px; overflow:hidden; background:var(--surface-2);}
+.stats-bar{display:flex; flex:none; width:70px; height:12px; border-radius:6px; overflow:hidden; background:var(--surface-2);}
 .stats-bar .ok{background:#2e9e5b; height:100%;}
 .stats-bar .bad{background:#c94a4a; height:100%;}
 .player-box{display:flex; flex-direction:column; gap:10px; width:100%;}
@@ -6737,7 +6737,7 @@ function statsRender(){
   t.textContent="";
   if(!rows.length) return;
   const head=document.createElement("tr");
-  ["Deschidere","Fără greșeli","Cu greșeli","Procent perfect"].forEach((h,k)=>{
+  ["Deschidere","Perfect","Greșit","Procent"].forEach((h,k)=>{
     const th=document.createElement("th");
     th.textContent=h;
     if(k) th.className="num";
