@@ -959,7 +959,7 @@ body.desk-board.stats-page-active .wrap{max-width:960px;}
   .subnav::-webkit-scrollbar{display:none;}
   .subnav:empty{display:none;}
   .subnav .quiz-chip{flex:0 0 auto; padding:8px 14px; font-size:.88rem;}
-  .tabbar{display:grid; grid-template-columns:repeat(4,1fr); position:fixed; left:0; right:0; bottom:0; z-index:50; background:var(--surface); border-top:1px solid var(--border); padding:4px 4px calc(4px + env(safe-area-inset-bottom,0px)); box-shadow:0 -4px 16px rgba(0,0,0,.08);}
+  .tabbar{display:grid; grid-template-columns:repeat(5,1fr); position:fixed; left:0; right:0; bottom:0; z-index:50; background:var(--surface); border-top:1px solid var(--border); padding:4px 4px calc(4px + env(safe-area-inset-bottom,0px)); box-shadow:0 -4px 16px rgba(0,0,0,.08);}
   .tabbar button{display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; min-height:54px; border:0; border-radius:12px; background:none; color:var(--text-dim); font-family:inherit; font-size:.72rem; font-weight:600; cursor:pointer;}
   .tabbar button .tb-ico{font-size:1.25rem; line-height:1;}
   .tabbar button.active{color:var(--text); background:var(--surface-2);}
@@ -972,6 +972,15 @@ body.desk-board.stats-page-active .wrap{max-width:960px;}
   .wrap > .subnav{order:-2;}
   body{padding-bottom:calc(160px + env(safe-area-inset-bottom,0px));}
 }
+/* Acasă */
+.home-head{display:flex; align-items:flex-start; justify-content:space-between; gap:10px; flex-wrap:wrap;}
+.home-tiles{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
+.home-tile{min-height:78px; padding:12px 14px; border:0; border-radius:16px; background:var(--surface-2); color:var(--text); font-family:inherit; font-size:.95rem; font-weight:600; text-align:left; cursor:pointer; display:flex; flex-direction:column; align-items:flex-start; justify-content:center; gap:4px;}
+.home-tile .ht-ico{font-size:1.4rem; line-height:1;}
+.home-row{display:flex; justify-content:space-between; gap:8px; font-size:.9rem; margin-top:10px;}
+.home-bar{height:8px; margin-top:4px; border-radius:4px; background:var(--surface-2); overflow:hidden;}
+.home-bar span{display:block; height:100%; background:#2e9e5b;}
+#homeContinue .btn{margin-top:4px;}
 </style>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Public+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
@@ -1096,6 +1105,7 @@ body.desk-board.stats-page-active .wrap{max-width:960px;}
   <button class="page-menu-btn" id="pageMenuBtn" type="button"><span class="pm-ico" aria-hidden="true">☰</span><span class="pm-label" id="pageMenuLabel"></span><span class="pm-caret" aria-hidden="true">▾</span></button>
   <div class="subnav" id="subnav"></div>
   <nav class="tabbar" id="tabbar" aria-label="Secțiuni">
+    <button type="button" data-sec="home"><span class="tb-ico" aria-hidden="true">🏠</span>Acasă</button>
     <button type="button" data-sec="learn"><span class="tb-ico" aria-hidden="true">📚</span>Învață</button>
     <button type="button" data-sec="open"><span class="tb-ico" aria-hidden="true">📖</span>Deschideri</button>
     <button type="button" data-sec="play"><span class="tb-ico" aria-hidden="true">♟</span>Joacă</button>
@@ -1111,6 +1121,7 @@ body.desk-board.stats-page-active .wrap{max-width:960px;}
     </div>
   </div>
   <div class="pagetabs" id="pagetabs">
+    <button class="pagetab" data-page="14" type="button">Acasă</button>
     <button class="pagetab active" data-page="9" type="button">Deschideri<span class="count">91</span></button>
     <button class="pagetab" data-page="1" type="button">Principii de bază<span class="count">35</span></button>
     <button class="pagetab" data-page="2" type="button">Principii avansate<span class="count">16</span></button>
@@ -1297,6 +1308,25 @@ body.desk-board.stats-page-active .wrap{max-width:960px;}
         <div class="stats-list"><div class="stats-table-wrap"><table class="stats-table" id="asmTable"></table></div></div>
         <div class="stats-detail" id="asmDetail"></div>
       </div>
+    </div>
+  </div>
+  <div class="game-wrap" id="homeContainer">
+    <div class="content-card stats-card">
+      <div class="home-head">
+        <div>
+          <div class="eyebrow">Acasă</div>
+          <h2 style="font-size:1.4rem;" id="homeHello">Salut!</h2>
+        </div>
+        <button class="btn" id="homeSwitch" type="button">👤 Schimbă jucătorul</button>
+      </div>
+      <div class="stats-detail" id="homeContinue"></div>
+      <div class="home-tiles">
+        <button class="home-tile" type="button" data-go="puzzle"><span class="ht-ico" aria-hidden="true">🧩</span>Puzzle rapid</button>
+        <button class="home-tile" type="button" data-go="10"><span class="ht-ico" aria-hidden="true">🎲</span>Test deschideri</button>
+        <button class="home-tile" type="button" data-go="7"><span class="ht-ico" aria-hidden="true">♟</span>Joacă cu calculatorul</button>
+        <button class="home-tile" type="button" data-go="11"><span class="ht-ico" aria-hidden="true">📊</span>Statistici</button>
+      </div>
+      <div class="stats-detail" id="homeProgress"></div>
     </div>
   </div>
   <div class="game-wrap" id="quizContainer">
@@ -3632,7 +3662,7 @@ function buildPageSelect(){
   updateDiagToggle();
 }
 /* phone: page menu as large tiles */
-const PAGE_ICONS={1:"♙",2:"♗",3:"♘",4:"♖",5:"🛡️",6:"⚔️",7:"🖥️",8:"⚠️",9:"📖",10:"🎲",11:"📊",12:"⚔️",13:"🔗"};
+const PAGE_ICONS={1:"♙",2:"♗",3:"♘",4:"♖",5:"🛡️",6:"⚔️",7:"🖥️",8:"⚠️",9:"📖",10:"🎲",11:"📊",12:"⚔️",13:"🔗",14:"🏠"};
 function pageTabParts(b){
   const c=b.querySelector(".count");
   const name=c?b.textContent.slice(0,b.textContent.length-c.textContent.length).trim():b.textContent.trim();
@@ -3785,6 +3815,7 @@ function syncPageTabs(){
 
 /* telefon: 4 secțiuni în bara de jos; secțiunea ține minte ultima sub-pagină deschisă */
 var TAB_SECTIONS={
+  home:{pages:[14], labels:{14:"Acasă"}},
   learn:{pages:[1,2,3,4,5,6,8], labels:{1:"Bază",2:"Avansate",3:"Tactică",4:"Finaluri",5:"Defensivă",6:"Capturi",8:"Capcane"}},
   open:{pages:[9,10,11,12,13], labels:{9:"Linii",10:"Test",11:"Statistici",12:"H2H",13:"Asemănări"}},
   play:{pages:[7], labels:{7:"Joc"}}
@@ -3855,6 +3886,7 @@ function switchPage(pg){
   else if(pg===11){ statsEnter(); }
   else if(pg===12){ h2hEnter(); }
   else if(pg===13){ asmEnter(); }
+  else if(pg===14){ homeEnter(); }
   else { loadPrinciple(0); }
 }
 
@@ -3862,7 +3894,8 @@ function applyPageVisibility(){
   const isGame=currentPage===7;
   const isOpen=currentPage===9;
   const isQuiz=currentPage===10;
-  const isStats=currentPage===11||currentPage===12||currentPage===13;
+  const isStats=currentPage===11||currentPage===12||currentPage===13||currentPage===14;
+  const isHome=currentPage===14;
   const isAsm=currentPage===13;
   const isH2H=currentPage===12;
   const isDefense=currentPage===5;
@@ -3880,6 +3913,7 @@ function applyPageVisibility(){
   document.getElementById("statsContainer").classList.toggle("show",currentPage===11);
   document.getElementById("h2hContainer").classList.toggle("show",isH2H);
   document.getElementById("asmContainer").classList.toggle("show",isAsm);
+  document.getElementById("homeContainer").classList.toggle("show",isHome);
   document.body.classList.toggle("stats-page-active",isStats);
   document.getElementById("openTopbar").style.display=isOpen?"":"none";
   if(!isOpen) openingsStop();
@@ -7293,6 +7327,83 @@ function asmRender(){
   });
   asmDetailRender(groups.find(g=>g.key===asmSelected)||null);
 }
+/* Acasă: de unde ai rămas, acțiuni rapide și progresul (ecranul de start pe telefon, ca la Chess.com) */
+let homeReady=false;
+function homeTotalPuzzles(){
+  return PRINCIPLES.length+PRINCIPLES_PAGE2.length+PRINCIPLES_PAGE3.length+PRINCIPLES_PAGE4.length+PRINCIPLES_PAGE5.length+PRINCIPLES_PAGE6.length+PRINCIPLES_PAGE8.length;
+}
+function homeBar(label,done,total){
+  const wrap=document.createElement("div");
+  const row=document.createElement("div");
+  row.className="home-row";
+  const a=document.createElement("span");
+  a.textContent=label;
+  const b=document.createElement("span");
+  b.textContent=done+" / "+total;
+  row.append(a,b);
+  const bar=document.createElement("div");
+  bar.className="home-bar";
+  const fill=document.createElement("span");
+  fill.style.width=(total?Math.round(done*100/total):0)+"%";
+  bar.appendChild(fill);
+  wrap.append(row,bar);
+  return wrap;
+}
+function homeGo(go){
+  if(go==="puzzle"){
+    switchPage(6);
+    loadPrinciple(Math.floor(Math.random()*activeSet().length));
+  } else switchPage(Number(go));
+  window.scrollTo(0,0);
+}
+function homeEnter(){
+  if(!homeReady){
+    homeReady=true;
+    document.querySelectorAll("#homeContainer .home-tile").forEach(b=>b.addEventListener("click",()=>homeGo(b.dataset.go)));
+    document.getElementById("homeSwitch").addEventListener("click",()=>{ try{ sessionStorage.removeItem(GATE_KEY); }catch(e){} playerGateInit(); });
+  }
+  homeRender();
+}
+function homeRender(){
+  const p=playerName();
+  document.getElementById("homeHello").textContent=p?"Salut, "+p+"!":"Salut!";
+  /* continuă de unde ai rămas pe Deschideri */
+  const c=document.getElementById("homeContinue");
+  c.textContent="";
+  let st=null;
+  try{ st=JSON.parse(ppGet(OPEN_STATE_KEY)||"null"); }catch(e){}
+  const idx=st?OPENINGS_DATA.findIndex((e,i)=>openingsKey(i)===st.k):-1;
+  const h=document.createElement("h3");
+  h.textContent="Continuă de unde ai rămas";
+  const t=document.createElement("p");
+  t.className="quiz-sum";
+  if(idx>=0){
+    const e=OPENINGS_DATA[idx];
+    t.textContent=e.op+" · mutarea "+(st.s||0)+" din "+e.moves.length;
+  } else t.textContent="Alege o linie pe pagina Deschideri și începe.";
+  const b=document.createElement("button");
+  b.type="button";
+  b.className="btn primary";
+  b.textContent="▶ Continuă";
+  b.addEventListener("click",()=>{ switchPage(9); window.scrollTo(0,0); });
+  c.append(h,t,b);
+  /* progresul */
+  const pr=document.getElementById("homeProgress");
+  pr.textContent="";
+  const h2=document.createElement("h3");
+  h2.textContent="Progresul tău";
+  pr.appendChild(h2);
+  const total=homeTotalPuzzles();
+  pr.appendChild(homeBar("Puzzle-uri rezolvate", Math.min(completed.size,total), total));
+  const reps=repsLoad();
+  const lines=[];
+  OPENINGS_DATA.forEach((e,i)=>{ if(e.end!=="theory") lines.push(i); });
+  pr.appendChild(homeBar("Linii de deschideri jucate", lines.filter(i=>(reps[openingsKey(i)]||0)>0).length, lines.length));
+  const sts=statLoad();
+  let ok=0, tot=0;
+  Object.keys(sts).forEach(k=>{ ok+=sts[k].ok; tot+=sts[k].ok+sts[k].bad; });
+  pr.appendChild(homeBar("Linii făcute perfect", ok, tot));
+}
 function quizEnter(){
   if(!quizReady) quizInit();
   quizReset();
@@ -9940,6 +10051,8 @@ function initSettings(){
   /* sincronizare doar când ieși din joc (aplicația sau tab-ul trece în fundal / se închide) */
   document.addEventListener("visibilitychange",()=>{ if(document.visibilityState==="hidden") syncNow(false); });
   tabbarInit();
+  /* telefon: aplicația pornește pe Acasă */
+  if(window.matchMedia && window.matchMedia("(max-width:760px)").matches){ pageNavBack=true; switchPage(14); pageNavBack=false; }
   playerGateInit();
   historyInit();
   if(GOOGLE_CLIENT_ID && localStorage.getItem(DRIVE_FLAG)) setTimeout(()=>syncNow(false),1500);
