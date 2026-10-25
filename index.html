@@ -772,6 +772,9 @@ body.desk-board.stats-page-active .wrap{max-width:960px;}
 .h2h-item .btn{align-self:flex-start;}
 .stats-table td.name div{overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
 .h2h-counter{font-size:.8rem; color:var(--text-dim);}
+.game-opening{font-size:.85rem; color:var(--text-dim); text-align:center; padding:6px 6px 0; min-height:1.5em;}
+.game-open-title{color:var(--text); font-weight:600; margin-bottom:2px;}
+.game-open-level{margin-top:2px; line-height:1.4;}
 .asm-row{display:flex; justify-content:space-between; align-items:center; gap:8px;}
 .asm-row span{font-size:.88rem;}
 .player-box{display:flex; flex-direction:column; gap:10px; width:100%;}
@@ -1449,6 +1452,7 @@ body.desk-board.stats-page-active .wrap{max-width:960px;}
         <span id="gameTurnLabel">La mutare: <b>Alb</b></span>
         <span id="gameStatusLabel">Joci cu Albul</span>
       </div>
+      <div class="game-opening" id="gameOpening"></div>
       <div class="actions game-actions">
         <button class="btn primary" id="newGameBtn" type="button">♟ Joc nou</button>
         <button class="btn" id="undoGameBtn" type="button">↺ Anulează</button>
@@ -6002,7 +6006,48 @@ function findKingSquare(chessInst,color){
   return null;
 }
 
+/* jocul cu calculatorul: după primele 3 semimutări arată la ce deschidere se încadrează partida,
+   grupat pe dificultate ca pe pagina Deschideri (ușor / mediu / greu). Se potrivesc cele mai lungi prefixe comune. */
+function gameOpeningLevel(e){
+  const n=Math.ceil(e.moves.length/2);
+  return n<=8?"usor":(n<=12?"mediu":"greu");
+}
+function gameUpdateOpening(){
+  const box=document.getElementById("gameOpening");
+  if(!box || !game) return;
+  box.textContent="";
+  const hist=game.history();
+  if(hist.length<3){
+    box.textContent="După primele 3 mutări îți spun la ce deschidere se încadrează partida.";
+    return;
+  }
+  let best=[], bestL=0;
+  for(let L=Math.min(hist.length,30); L>=3 && !best.length; L--){
+    const pre=hist.slice(0,L).join(" ");
+    best=OPENINGS_DATA.filter(e=>e.end!=="theory" && e.sans.length>=L && e.sans.slice(0,L).join(" ")===pre);
+    if(best.length) bestL=L;
+  }
+  const title=document.createElement("div");
+  title.className="game-open-title";
+  if(!best.length){
+    title.textContent="Nu se potrivește cu nicio deschidere din bază (după "+hist.length+" semimutări).";
+    box.appendChild(title);
+    return;
+  }
+  title.textContent="Se încadrează după "+bestL+" semimutări:";
+  box.appendChild(title);
+  const levels={usor:"Ușor", mediu:"Mediu", greu:"Greu"};
+  Object.keys(levels).forEach(lv=>{
+    const names=[...new Set(best.filter(e=>gameOpeningLevel(e)===lv).map(e=>e.op))];
+    if(!names.length) return;
+    const row=document.createElement("div");
+    row.className="game-open-level";
+    row.textContent=levels[lv]+": "+names.join(", ");
+    box.appendChild(row);
+  });
+}
 function renderGame(){
+  gameUpdateOpening();
   paintPieces(gameBoardEl,game.board());
   animateFromHistory(gameBoardEl,game);
   gameBoardEl.querySelectorAll(".sq").forEach(el=>el.classList.remove("selected","legal","legal-capture","lastmove","king-check","king-mate"));
