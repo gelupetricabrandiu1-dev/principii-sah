@@ -1173,6 +1173,10 @@ body.desk-board.stats-page-active .wrap{max-width:960px;}
         </div>
       </div>
       <div class="open-board-name" id="openBoardName"><span class="obn-name"></span><span class="obn-meta"></span><div class="open-rate" id="openRate" role="group" aria-label="Părerea ta despre deschidere"><button type="button" class="open-rate-btn plus" data-v="+" aria-pressed="false" title="Folositoare">+</button><button type="button" class="open-rate-btn minus" data-v="-" aria-pressed="false" title="Nefolositoare">−</button></div></div>
+      <div class="capture-row" id="openCaptureRow">
+        <div class="capture-side" id="openCapUser"></div>
+        <div class="capture-side" id="openCapEngine"></div>
+      </div>
       <div class="status-line">
         <span id="openTurnLabel">La mutare: <b>Alb</b></span>
         <span id="openStepLabel">0 / 0</span>
@@ -6074,6 +6078,24 @@ function openingsMarkSel(g){
     if(el) el.classList.add(m.flags.indexOf("c")>=0?"legal-capture":"legal");
   });
 }
+/* piesele capturate și punctajul pe Deschideri: partea ta (stânga) și a adversarului (dreapta) */
+function openingsRenderCaptures(g){
+  const userEl=document.getElementById("openCapUser"), engineEl=document.getElementById("openCapEngine");
+  if(!userEl || !engineEl) return;
+  const byUser=[], byEngine=[];
+  g.history({verbose:true}).forEach(m=>{
+    if(!m.captured) return;
+    if(m.color===openUserSide) byUser.push(m.captured); else byEngine.push(m.captured);
+  });
+  const userScore=byUser.reduce((s,t)=>s+PIECE_VALUE[t],0);
+  const engineScore=byEngine.reduce((s,t)=>s+PIECE_VALUE[t],0);
+  const oppGlyph = openUserSide==="w"?PIECE_GLYPH:PIECE_GLYPH_W;
+  const ownGlyph = openUserSide==="w"?PIECE_GLYPH_W:PIECE_GLYPH;
+  userEl.innerHTML=byUser.map(t=>'<span class="cap-piece">'+oppGlyph[t]+'</span>').join("")
+    +'<span class="cap-score" title="Puncte capturate de tine">+'+userScore+'</span>';
+  engineEl.innerHTML=byEngine.map(t=>'<span class="cap-piece">'+ownGlyph[t]+'</span>').join("")
+    +'<span class="cap-score cap-lost" title="Puncte pierdute de tine">+'+engineScore+'</span>';
+}
 function openingsRender(){
   const e=OPENINGS_DATA[openIdx];
   const {g,last}=openingsPosition();
@@ -6104,6 +6126,7 @@ function openingsRender(){
   }
   document.getElementById("openStepLabel").textContent=openStep+" / "+total;
   document.getElementById("openTurnLabel").innerHTML="La mutare: <b>"+(g.turn()==="w"?"Alb":"Negru")+"</b>";
+  openingsRenderCaptures(g);
   const res=document.getElementById("openResult");
   if(openStep===total){
     res.textContent=e.end==="theory"?"Linie de teorie: se oprește aici (fără mat sau dama capturată)":(e.end==="mate"?"Șah mat":"Dama adversă a fost capturată")+" — câștigă "+(e.winner==="w"?"Albul":"Negrul");
