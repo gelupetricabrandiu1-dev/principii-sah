@@ -1191,6 +1191,7 @@ body.desk-board.stats-page-active .wrap{max-width:960px;}
         <button class="btn" id="openToTest" type="button" title="Mergi la testul de deschideri">🎲 Test</button>
         <button class="btn" id="openToStats" type="button" title="Vezi statistica deschiderilor">📊 Statistici</button>
         <button class="btn" id="openToH2H" type="button" title="Cu ce deschidere poți contracara">⚔️ H2H</button>
+        <button class="btn" id="openToAsm" type="button" title="Deschiderile care încep la fel">🔗 Asemănări</button>
       </div>
       <div class="open-msg" id="openPlayMsg"></div>
       <div class="actions open-controls">
@@ -1257,6 +1258,12 @@ body.desk-board.stats-page-active .wrap{max-width:960px;}
         <h2 style="font-size:1.3rem;">Deschiderile care încep la fel</h2>
       </div>
       <p class="quiz-sum" id="asmSummary"></p>
+      <div class="quiz-chips" id="asmLevel">
+        <button class="quiz-chip active" type="button" data-lv="all">Toate</button>
+        <button class="quiz-chip" type="button" data-lv="usor">Ușor</button>
+        <button class="quiz-chip" type="button" data-lv="mediu">Mediu</button>
+        <button class="quiz-chip" type="button" data-lv="greu">Greu</button>
+      </div>
       <div class="stats-layout">
         <div class="stats-list"><div class="stats-table-wrap"><table class="stats-table" id="asmTable"></table></div></div>
         <div class="stats-detail" id="asmDetail"></div>
@@ -7094,12 +7101,19 @@ function h2hRender(){
 }
 /* asemănări: liniile grupate după începutul lor, calculat din datele deschiderilor (nimic scris manual):
    grup = primele 2 mutări ale fiecărei părți; subgrup = primele 3 */
-let asmSelected=null, asmReady=false;
+let asmSelected=null, asmReady=false, asmLevel="all";
+/* aceleași niveluri ca pe pagina Deschideri: după numărul de mutări al liniei */
+function asmInLevel(e){
+  if(e.end==="theory") return false;
+  if(asmLevel==="all") return true;
+  const n=Math.ceil(e.moves.length/2), r=OPEN_LEVELS[asmLevel];
+  return n>=r[0] && n<=r[1];
+}
 function asmNumbered(sans,n){ return sans.slice(0,n).map((m,k)=>(k%2===0?(k/2+1)+"."+m:m)).join(" "); }
 function asmGroups(){
   const groups=new Map();
   OPENINGS_DATA.forEach(e=>{
-    if(e.end==="theory") return;
+    if(!asmInLevel(e)) return;
     const k=e.sans.slice(0,4).join(" ");
     if(!groups.has(k)) groups.set(k,{key:k, prefix:asmNumbered(e.sans,4), lines:[]});
     groups.get(k).lines.push(e);
@@ -7125,7 +7139,10 @@ function asmPlay(name){
   openingsSetMode("play");
 }
 function asmEnter(){
-  if(!asmReady) asmReady=true;
+  if(!asmReady){
+    asmReady=true;
+    document.querySelectorAll("#asmLevel button").forEach(b=>b.addEventListener("click",()=>{ asmLevel=b.dataset.lv; asmRender(); }));
+  }
   asmRender();
 }
 function asmDetailRender(g){
@@ -7168,8 +7185,9 @@ function asmDetailRender(g){
   });
 }
 function asmRender(){
+  document.querySelectorAll("#asmLevel button").forEach(b=>b.classList.toggle("active",b.dataset.lv===asmLevel));
   const groups=asmGroups();
-  const total=OPENINGS_DATA.filter(e=>e.end!=="theory").length;
+  const total=OPENINGS_DATA.filter(e=>asmInLevel(e)).length;
   document.getElementById("asmSummary").textContent=groups.length+" grupuri din "+total+" linii. Liniile din același grup încep identic.";
   const t=document.getElementById("asmTable");
   t.textContent="";
@@ -7235,6 +7253,7 @@ function openingsEnter(){
     document.getElementById("openToTest").addEventListener("click",()=>switchPage(10));
     document.getElementById("openToStats").addEventListener("click",()=>switchPage(11));
     document.getElementById("openToH2H").addEventListener("click",()=>switchPage(12));
+    document.getElementById("openToAsm").addEventListener("click",()=>switchPage(13));
     document.getElementById("openFilterBtn").addEventListener("click",(ev)=>{
       const open=document.getElementById("openTopbar").classList.toggle("filters-open");
       ev.currentTarget.setAttribute("aria-expanded",open?"true":"false");
