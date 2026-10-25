@@ -936,9 +936,9 @@ body.desk-board.stats-page-active .wrap{max-width:960px;}
   body.desk-board .navchip{width:32px; height:32px; font-size:.72rem;}
 }
 @media (min-width:1000px){
-  body.desk-board{padding-left:calc(var(--bsz,560px) + 24px + 16px + 28px);}
-  body.desk-board.stats-page-active{padding-left:0;}
-  body.desk-board .board-card{position:fixed; top:16px; left:16px; z-index:30; width:calc(var(--bsz,560px) + 24px); max-height:calc(100vh - 32px); overflow-y:auto; padding:12px; gap:10px;}
+  body.desk-board{padding-left:calc(var(--nav-w,0px) + var(--bsz,560px) + 24px + 16px + 28px);}
+  body.desk-board.stats-page-active{padding-left:calc(var(--nav-w,0px) + 24px);}
+  body.desk-board .board-card{position:fixed; top:16px; left:calc(var(--nav-w,0px) + 16px); z-index:30; width:calc(var(--bsz,560px) + 24px); max-height:calc(100vh - 32px); overflow-y:auto; padding:12px; gap:10px;}
   body.desk-board .board-card .board-outer,
   body.desk-board #openingsContainer .board-card .board-outer{width:var(--bsz,560px); max-width:none !important;}
   body.desk-board .main,
@@ -981,6 +981,32 @@ body.desk-board.stats-page-active .wrap{max-width:960px;}
 .home-bar{height:8px; margin-top:4px; border-radius:4px; background:var(--surface-2); overflow:hidden;}
 .home-bar span{display:block; height:100%; background:#2e9e5b;}
 #homeContinue .btn{margin-top:4px;}
+/* laptop (după aplicațiile de Windows: NavigationView, aplicația Chess.com pentru Windows):
+   meniu lateral cu secțiunile, jos jucătorul și Setări; se restrânge la iconițe;
+   sub-paginile ca file sus, cu linie sub fila activă */
+.sidenav{display:none;}
+@media (min-width:1000px){
+  body.desk-board{--nav-w:220px;}
+  body.desk-board.nav-compact{--nav-w:64px;}
+  body.desk-board .sidenav{display:flex; flex-direction:column; gap:4px; position:fixed; top:0; left:0; bottom:0; width:var(--nav-w); z-index:45; padding:10px 8px; background:var(--surface); border-right:1px solid var(--border); overflow:hidden;}
+  .sidenav button{display:flex; align-items:center; gap:12px; min-height:44px; padding:8px 12px; border:0; border-radius:8px; background:none; color:var(--text); font-family:inherit; font-size:.92rem; font-weight:600; text-align:left; cursor:pointer; white-space:nowrap; position:relative;}
+  .sidenav button:hover,.sidenav button.active{background:var(--surface-2);}
+  .sidenav button.active::before{content:""; position:absolute; left:2px; top:12px; bottom:12px; width:3px; border-radius:2px; background:var(--accent);}
+  .sidenav .sn-ico{flex:0 0 24px; text-align:center; font-size:1.15rem;}
+  .sidenav .sn-toggle{margin-bottom:6px;}
+  .sidenav .sn-spacer{flex:1;}
+  body.nav-compact .sidenav .sn-label{display:none;}
+  body.desk-board .pagetabs{display:none !important;}
+  body.desk-board .subnav{display:flex; gap:4px; border-bottom:1px solid var(--border); overflow-x:auto;}
+  body.desk-board .subnav:empty{display:none;}
+  body.desk-board .subnav .quiz-chip{background:none; border-radius:0; padding:8px 12px; color:var(--text-dim); border-bottom:2px solid transparent; font-size:.88rem;}
+  body.desk-board .subnav .quiz-chip.active{color:var(--text); border-bottom-color:var(--accent);}
+  body.desk-board .wrap > .top{order:-3;}
+  body.desk-board .wrap > .subnav{order:-2;}
+  /* Test, Statistici, H2H și Asemănări sunt deja în filele de sus */
+  body.desk-board #openToTest,body.desk-board #openToStats,body.desk-board #openToH2H,body.desk-board #openToAsm{display:none !important;}
+  body.desk-board .open-play-row{grid-template-columns:1fr 1fr;}
+}
 </style>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Public+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
@@ -1104,6 +1130,16 @@ body.desk-board.stats-page-active .wrap{max-width:960px;}
   <select class="lang-select pagesel" id="pageSelect" aria-label="Pagină"></select>
   <button class="page-menu-btn" id="pageMenuBtn" type="button"><span class="pm-ico" aria-hidden="true">☰</span><span class="pm-label" id="pageMenuLabel"></span><span class="pm-caret" aria-hidden="true">▾</span></button>
   <div class="subnav" id="subnav"></div>
+  <nav class="sidenav" id="sidenav" aria-label="Navigare">
+    <button type="button" class="sn-toggle" id="sidenavToggle" title="Restrânge sau extinde meniul"><span class="sn-ico" aria-hidden="true">☰</span><span class="sn-label">Principii de Șah</span></button>
+    <button type="button" data-sec="home"><span class="sn-ico" aria-hidden="true">🏠</span><span class="sn-label">Acasă</span></button>
+    <button type="button" data-sec="learn"><span class="sn-ico" aria-hidden="true">📚</span><span class="sn-label">Învață</span></button>
+    <button type="button" data-sec="open"><span class="sn-ico" aria-hidden="true">📖</span><span class="sn-label">Deschideri</span></button>
+    <button type="button" data-sec="play"><span class="sn-ico" aria-hidden="true">♟</span><span class="sn-label">Joacă</span></button>
+    <div class="sn-spacer"></div>
+    <button type="button" data-act="player" title="Schimbă jucătorul"><span class="sn-ico" aria-hidden="true">👤</span><span class="sn-label" id="sidenavPlayer">Implicit</span></button>
+    <button type="button" data-sec="me"><span class="sn-ico" aria-hidden="true">⚙️</span><span class="sn-label">Setări</span></button>
+  </nav>
   <nav class="tabbar" id="tabbar" aria-label="Secțiuni">
     <button type="button" data-sec="home"><span class="tb-ico" aria-hidden="true">🏠</span>Acasă</button>
     <button type="button" data-sec="learn"><span class="tb-ico" aria-hidden="true">📚</span>Învață</button>
@@ -3723,7 +3759,8 @@ function fitBoardDesktop(){
     });
     extra+=n*(parseFloat(cs.rowGap)||0);
     const byH=window.innerHeight-32-extra;
-    const byW=window.innerWidth-16-24-28-16-340;
+    const navW=parseFloat(getComputedStyle(document.body).getPropertyValue("--nav-w"))||0;
+    const byW=window.innerWidth-navW-16-24-28-16-340;
     /* the size the user chose with − / +: 100% = as tall as the screen allows */
     const s=Math.min(byH*boardScale, byW);
     root.style.setProperty("--bsz",Math.max(280,Math.floor(s))+"px");
@@ -3828,7 +3865,9 @@ function tabbarUpdate(){
   if(!TAB_SECTIONS) return;
   const sec=tabSectionOf(currentPage);
   tabLast[sec]=currentPage;
-  document.querySelectorAll("#tabbar button").forEach(b=>b.classList.toggle("active",b.dataset.sec===sec));
+  document.querySelectorAll("#tabbar button, #sidenav button[data-sec]").forEach(b=>b.classList.toggle("active",b.dataset.sec===sec));
+  const pl=document.getElementById("sidenavPlayer");
+  if(pl) pl.textContent=playerName()||"Implicit";
   const sub=document.getElementById("subnav");
   if(!sub) return;
   sub.textContent="";
@@ -3845,17 +3884,33 @@ function tabbarUpdate(){
   const act=sub.querySelector(".active");
   if(act) sub.scrollLeft=Math.max(0, act.offsetLeft-sub.clientWidth/2+act.offsetWidth/2);
 }
+function tabbarGo(sec){
+  if(sec==="me"){ openSettings(); return; }
+  const S=TAB_SECTIONS[sec];
+  if(!S) return;
+  const pg=tabLast[sec]||S.pages[0];
+  if(pg!==currentPage){ switchPage(pg); window.scrollTo(0,0); }
+}
 function tabbarInit(){
   const bar=document.getElementById("tabbar");
-  if(!bar) return;
-  bar.addEventListener("click",ev=>{
-    const b=ev.target.closest("button");
-    if(!b) return;
-    if(b.dataset.sec==="me"){ openSettings(); return; }
-    const S=TAB_SECTIONS[b.dataset.sec];
-    const pg=tabLast[b.dataset.sec]||S.pages[0];
-    if(pg!==currentPage){ switchPage(pg); window.scrollTo(0,0); }
-  });
+  if(bar) bar.addEventListener("click",ev=>{ const b=ev.target.closest("button"); if(b) tabbarGo(b.dataset.sec); });
+  /* laptop: meniul lateral (ca NavigationView din Windows), restrângibil la iconițe */
+  const side=document.getElementById("sidenav");
+  if(side){
+    try{ if(localStorage.getItem("sah-nav-compact")==="1") document.body.classList.add("nav-compact"); }catch(e){}
+    side.addEventListener("click",ev=>{
+      const b=ev.target.closest("button");
+      if(!b) return;
+      if(b.id==="sidenavToggle"){
+        const on=document.body.classList.toggle("nav-compact");
+        try{ localStorage.setItem("sah-nav-compact",on?"1":"0"); }catch(e){}
+        fitBoardDesktop();
+        return;
+      }
+      if(b.dataset.act==="player"){ try{ sessionStorage.removeItem(GATE_KEY); }catch(e){} playerGateInit(); return; }
+      tabbarGo(b.dataset.sec);
+    });
+  }
   tabbarUpdate();
 }
 /* butonul Înapoi al telefonului: întâi închide fereastra deschisă, apoi revine la pagina anterioară */
@@ -10051,8 +10106,8 @@ function initSettings(){
   /* sincronizare doar când ieși din joc (aplicația sau tab-ul trece în fundal / se închide) */
   document.addEventListener("visibilitychange",()=>{ if(document.visibilityState==="hidden") syncNow(false); });
   tabbarInit();
-  /* telefon: aplicația pornește pe Acasă */
-  if(window.matchMedia && window.matchMedia("(max-width:760px)").matches){ pageNavBack=true; switchPage(14); pageNavBack=false; }
+  /* aplicația pornește pe Acasă (telefon și laptop) */
+  pageNavBack=true; switchPage(14); pageNavBack=false;
   playerGateInit();
   historyInit();
   if(GOOGLE_CLIENT_ID && localStorage.getItem(DRIVE_FLAG)) setTimeout(()=>syncNow(false),1500);
