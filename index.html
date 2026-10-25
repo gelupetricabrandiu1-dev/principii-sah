@@ -738,10 +738,11 @@ button.btn.color-pick-btn:hover{background:var(--accent-soft); filter:none;}
 .quiz-rowname{font-size:.9rem; color:var(--text); overflow-wrap:anywhere;}
 .quiz-rowname.current{font-weight:700;}
 .stats-table-wrap{overflow-x:auto;}
-.stats-table{width:100%; border-collapse:collapse; font-size:.85rem;}
+.stats-table{width:100%; border-collapse:collapse; font-size:.85rem; table-layout:fixed;}
 .stats-table th, .stats-table td{padding:7px 5px; border-bottom:1px solid var(--border); text-align:left; vertical-align:top;}
 .stats-table th{color:var(--text-dim); font-size:.8rem; text-transform:uppercase; letter-spacing:.03em;}
-.stats-table .num{text-align:right; white-space:nowrap; width:1%;}
+.stats-table .num{text-align:right; white-space:nowrap; width:56px;}
+.stats-table .pct{width:86px;}
 .stats-table td.name{max-width:0; width:100%; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
 .stats-pct{display:flex; align-items:center; justify-content:flex-end; gap:8px;}
 .stats-bar{display:flex; flex:none; width:44px; height:12px; border-radius:6px; overflow:hidden; background:var(--surface-2);}
@@ -6740,7 +6741,7 @@ function statsRender(){
   ["Deschidere","Perfect","Greșit","Procent"].forEach((h,k)=>{
     const th=document.createElement("th");
     th.textContent=h;
-    if(k) th.className="num";
+    if(k) th.className="num"+(k===3?" pct":"");
     head.appendChild(th);
   });
   t.appendChild(head);
@@ -6748,7 +6749,7 @@ function statsRender(){
     const tr=document.createElement("tr");
     const name=document.createElement("td");
     name.className="name";
-    name.textContent=r.e.op+(r.tag?" · "+r.tag:"");
+    name.textContent=(r.tag?r.tag+" · ":"")+r.e.op;
     name.title=name.textContent;
     tr.appendChild(name);
     [String(r.s.ok), String(r.s.bad)].forEach(c=>{
@@ -6758,7 +6759,7 @@ function statsRender(){
       tr.appendChild(td);
     });
     const pctCell=document.createElement("td");
-    pctCell.className="num";
+    pctCell.className="num pct";
     const wrap=document.createElement("div");
     wrap.className="stats-pct";
     const bar=document.createElement("div");
