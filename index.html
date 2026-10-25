@@ -1293,7 +1293,7 @@ const DEVICE_KEYS=["sah-principii-theme","sah-principii-lang","sah-design-v2","s
 const GOOGLE_CLIENT_ID="981597003979-t5p8n7clr3h0u5haaodjr4iv93o4jkoc.apps.googleusercontent.com"; /* ID-ul clientului OAuth din Google Cloud, de forma …apps.googleusercontent.com (vezi pașii de instalare) */
 const DRIVE_SCOPE="https://www.googleapis.com/auth/drive.appdata";
 const DRIVE_FILE="progres-sah.json";
-let driveToken="", driveClient=null, syncTimer=null, syncRunning=false;
+let driveToken="", driveClient=null, syncRunning=false;
 function playerName(){ try{ return localStorage.getItem(PLAYER_KEY)||""; }catch(e){ return ""; } }
 function ppKey(k){ const p=playerName(); return (!p||DEVICE_KEYS.indexOf(k)>=0)?k:k+"@"+p; }
 function ppGet(k){ return localStorage.getItem(ppKey(k)); }
@@ -1304,7 +1304,7 @@ setTimeout(()=>{ ppBooted=true; }, 2500);
 function ppSet(k,v){
   const fk=ppKey(k), changed=localStorage.getItem(fk)!==v;
   localStorage.setItem(fk,v);
-  if(changed && ppBooted && DEVICE_KEYS.indexOf(k)<0){ stampSet(fk); syncSoon(); }
+  if(changed && ppBooted && DEVICE_KEYS.indexOf(k)<0){ stampSet(fk); }
 }
 const PRINCIPLES = [
 {id:1,title:"Controlează centrul tăblii",fen:"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",turn:"w",correct:[["e2","e4"],["d2","d4"]],
@@ -9090,15 +9090,10 @@ async function driveWriteFile(id, data){
 const RELOAD_KEY="principii-sah-reload-la";
 function reloadAllowed(){ try{ return Date.now()-Number(sessionStorage.getItem(RELOAD_KEY)||0)>60000; }catch(e){ return true; } }
 function markReload(){ try{ sessionStorage.setItem(RELOAD_KEY,String(Date.now())); }catch(e){} }
-function syncSoon(){
-  if(!GOOGLE_CLIENT_ID || !localStorage.getItem(DRIVE_FLAG)) return;
-  clearTimeout(syncTimer);
-  syncTimer=setTimeout(()=>syncNow(false),3000);
-}
 async function syncNow(interactive){
   if(!GOOGLE_CLIENT_ID) return;
   if(!localStorage.getItem(DRIVE_FLAG) && !interactive) return;
-  if(syncRunning){ syncSoon(); return; }
+  if(syncRunning) return;
   syncRunning=true;
   syncStatus("Se sincronizează…");
   try{
@@ -9209,7 +9204,8 @@ function initSettings(){
   document.getElementById("syncConnectBtn").addEventListener("click",syncConnect);
   document.getElementById("syncNowBtn").addEventListener("click",()=>syncNow(true));
   document.getElementById("syncOffBtn").addEventListener("click",syncDisconnect);
-  document.addEventListener("visibilitychange",()=>{ if(document.visibilityState==="visible") syncSoon(); });
+  /* sincronizare doar când ieși din joc (aplicația sau tab-ul trece în fundal / se închide) */
+  document.addEventListener("visibilitychange",()=>{ if(document.visibilityState==="hidden") syncNow(false); });
   if(GOOGLE_CLIENT_ID && localStorage.getItem(DRIVE_FLAG)) setTimeout(()=>syncNow(false),1500);
   document.getElementById("settingsOverlay").addEventListener("click",(e)=>{
     if(e.target.id==="settingsOverlay") closeSettings();
