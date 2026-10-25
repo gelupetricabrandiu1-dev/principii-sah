@@ -3654,8 +3654,24 @@ function syncPageTabs(){
   updatePageMenuLabel();
 }
 
+/* butonul Înapoi al telefonului: întâi închide fereastra deschisă, apoi revine la pagina anterioară */
+const pageHistory=[];
+let pageNavBack=false;
+function historyGuard(){ try{ history.pushState({sahGuard:true},""); }catch(e){} }
+function historyInit(){
+  if("scrollRestoration" in history) history.scrollRestoration="manual";
+  historyGuard();
+  window.addEventListener("popstate",()=>{
+    historyGuard();
+    if(document.getElementById("settingsOverlay").classList.contains("show")){ closeSettings(); return; }
+    if(pageHistory.length){ pageNavBack=true; switchPage(pageHistory.pop()); pageNavBack=false; }
+  });
+  /* Chrome ignoră intrările create fără atingere: încă una la prima apăsare */
+  document.addEventListener("pointerdown",()=>historyGuard(),{once:true});
+}
 function switchPage(pg){
   if(pg===currentPage) return;
+  if(!pageNavBack){ pageHistory.push(currentPage); if(pageHistory.length>30) pageHistory.shift(); }
   currentPage=pg;
   savePage();
   syncPageTabs();
@@ -6035,7 +6051,7 @@ function openingsRender(){
     if(i%2===0) html+='<span class="om-num">'+(i/2+1)+'.</span>';
     html+='<button type="button" class="om-move'+(i===openStep-1?' active':'')+'" data-i="'+(i+1)+'">'+s+'</button>';
   });
-  list.innerHTML=html;
+  keepScroll(list, ()=>{ list.innerHTML=html; });
   const act=list.querySelector(".om-move.active");
   if(act){
     const lr=list.getBoundingClientRect(), ar=act.getBoundingClientRect();
@@ -6507,9 +6523,21 @@ function quizReset(){
 /* un rând de bife sub tablă: verde ✓ = rezolvat fără greșeală, roșu ✗ = cu greșeală, cifra = urmează */
 /* lista verticală sub tablă: pentru fiecare puzzle, cifra, sub ea bifa verde ✓ (corect) sau ✗ roșu (greșit), și numele.
    Numele apare la puzzle-urile terminate și la cel curent (dacă nu l-ai ascuns); cele care urmează rămân ascunse */
+/* redesenarea unei liste nu are voie să mute pagina: păstrăm înălțimea și poziția de derulare */
+function keepScroll(box, redraw){
+  const holder=box.parentElement||box;
+  const sx=window.scrollX, sy=window.scrollY, minH=holder.style.minHeight;
+  holder.style.minHeight=holder.offsetHeight+"px";
+  redraw();
+  window.scrollTo(sx,sy);
+  requestAnimationFrame(()=>{ holder.style.minHeight=minH; window.scrollTo(sx,sy); });
+}
 function quizRenderMarks(){
   const strip=document.getElementById("quizStrip"), names=document.getElementById("quizNames");
   if(!strip||!names) return;
+  keepScroll(strip, ()=>quizDrawMarks(strip,names));
+}
+function quizDrawMarks(strip,names){
   strip.textContent="";
   names.textContent="";
   quizList.forEach((i,k)=>{
@@ -9206,6 +9234,7 @@ function initSettings(){
   document.getElementById("syncOffBtn").addEventListener("click",syncDisconnect);
   /* sincronizare doar când ieși din joc (aplicația sau tab-ul trece în fundal / se închide) */
   document.addEventListener("visibilitychange",()=>{ if(document.visibilityState==="hidden") syncNow(false); });
+  historyInit();
   if(GOOGLE_CLIENT_ID && localStorage.getItem(DRIVE_FLAG)) setTimeout(()=>syncNow(false),1500);
   document.getElementById("settingsOverlay").addEventListener("click",(e)=>{
     if(e.target.id==="settingsOverlay") closeSettings();
