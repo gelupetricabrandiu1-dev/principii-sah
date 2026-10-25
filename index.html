@@ -6732,7 +6732,7 @@ function statsRender(){
   t.appendChild(head);
   rows.forEach(({e,s,pct})=>{
     const tr=document.createElement("tr");
-    [e.op+" · "+e.sans.slice(0,4).join(" "), String(s.ok), String(s.bad), pct===null?"—":pct+"%"].forEach((c,k)=>{
+    [e.op+" · "+e.sans.slice(0,8).map((m,k)=>(k%2===0?(k/2+1)+"."+m:m)).join(" "), String(s.ok), String(s.bad), pct===null?"—":pct+"%"].forEach((c,k)=>{
       const td=document.createElement("td");
       td.textContent=c;
       if(k) td.className="num";
