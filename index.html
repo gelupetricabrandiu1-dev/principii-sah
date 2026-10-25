@@ -6526,11 +6526,17 @@ function quizReset(){
 /* redesenarea unei liste nu are voie să mute pagina: păstrăm înălțimea și poziția de derulare */
 function keepScroll(box, redraw){
   const holder=box.parentElement||box;
-  const sx=window.scrollX, sy=window.scrollY, minH=holder.style.minHeight;
+  const sx=window.scrollX, sy=window.scrollY;
+  /* apeluri suprapuse: înălțimea inițială se ține minte o singură dată */
+  if(!holder._keepN){ holder._keepMin=holder.style.minHeight; holder._keepN=0; }
+  holder._keepN++;
   holder.style.minHeight=holder.offsetHeight+"px";
   redraw();
   window.scrollTo(sx,sy);
-  requestAnimationFrame(()=>{ holder.style.minHeight=minH; window.scrollTo(sx,sy); });
+  setTimeout(()=>{
+    window.scrollTo(sx,sy);
+    if(--holder._keepN===0){ holder.style.minHeight=holder._keepMin; holder._keepN=0; }
+  },120);
 }
 function quizRenderMarks(){
   const strip=document.getElementById("quizStrip"), names=document.getElementById("quizNames");
