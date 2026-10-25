@@ -748,6 +748,12 @@ button.btn.color-pick-btn:hover{background:var(--accent-soft); filter:none;}
 .stats-bar{display:flex; width:100%; height:12px; border-radius:6px; overflow:hidden; background:var(--surface-2);}
 .stats-bar .ok{background:#2e9e5b; height:100%;}
 .stats-bar .bad{background:#c94a4a; height:100%;}
+.gate{position:fixed; inset:0; z-index:200; background:rgba(0,0,0,.35); display:flex; align-items:flex-start; justify-content:center; padding:10vh 16px 16px; overflow-y:auto;}
+.gate-card{width:100%; max-width:380px; padding:20px; border-radius:16px; background:var(--surface); border:1px solid var(--border); display:flex; flex-direction:column; gap:10px;}
+.gate-card h2{margin:0 0 4px; font-size:1.3rem;}
+.gate-btn{min-height:48px; padding:8px 12px; border-radius:12px; border:1px solid var(--border); background:var(--surface-2); color:var(--text); font-family:inherit; font-size:1rem; font-weight:600; cursor:pointer; text-align:left;}
+.gate-btn.primary{background:var(--accent); color:var(--on-accent); border-color:transparent;}
+.gate-card input{min-height:44px; padding:8px 10px; border-radius:10px; border:1px solid var(--border); background:var(--surface); color:var(--text); font-family:inherit; font-size:1rem; box-sizing:border-box; width:100%;}
 body.desk-board.stats-page-active .wrap{max-width:960px;}
 .stats-layout{display:grid; grid-template-columns:minmax(0,1fr) 300px; gap:18px; align-items:start;}
 .stats-detail{border:1px solid var(--border); border-radius:14px; padding:14px; background:var(--surface);}
@@ -9236,6 +9242,65 @@ function playerCopyDefault(name){
     if(localStorage.getItem(target)===null) localStorage.setItem(target,localStorage.getItem(k));
   });
 }
+/* ecranul „Cine joacă?”: la fiecare deschidere a aplicației se alege jucătorul înainte de orice */
+const GATE_KEY="principii-sah-ales-jucator";
+function gateChoose(name){
+  try{ sessionStorage.setItem(GATE_KEY,"1"); }catch(e){}
+  if(name===playerName()){ const g=document.getElementById("playerGate"); if(g) g.remove(); return; }
+  playerSwitch(name);
+}
+function gateNew(){
+  const msg=document.getElementById("gateMsg"), inp=document.getElementById("gateName");
+  const name=(inp.value||"").trim().slice(0,20);
+  if(!name){ msg.textContent="Scrie un nume."; return; }
+  if(tombsLoad()[name]){ msg.textContent="Numele ăsta a fost șters. Alege alt nume."; return; }
+  const names=playersLoad();
+  if(names.indexOf(name)<0){
+    if(document.getElementById("playerCopy").checked) playerCopyDefault(name);
+    playersSave([...names,name]);
+  }
+  gateChoose(name);
+}
+function playerGateInit(){
+  try{ if(sessionStorage.getItem(GATE_KEY)) return; }catch(e){ return; }
+  const ov=document.createElement("div");
+  ov.className="gate";
+  ov.id="playerGate";
+  const card=document.createElement("div");
+  card.className="gate-card";
+  const h=document.createElement("h2");
+  h.textContent="Cine joacă?";
+  card.appendChild(h);
+  const cur=playerName();
+  const opts=[{name:"",label:"Implicit (progresul de până acum)"}].concat(playersLoad().map(n=>({name:n,label:n})));
+  opts.forEach(o=>{
+    const b=document.createElement("button");
+    b.type="button";
+    b.className="gate-btn"+(o.name===cur?" primary":"");
+    b.textContent=o.label;
+    b.addEventListener("click",()=>gateChoose(o.name));
+    card.appendChild(b);
+  });
+  const sep=document.createElement("p");
+  sep.className="quiz-sum";
+  sep.textContent="Jucător nou:";
+  const inp=document.createElement("input");
+  inp.type="text";
+  inp.id="gateName";
+  inp.maxLength=20;
+  inp.placeholder="Nume jucător nou";
+  const add=document.createElement("button");
+  add.type="button";
+  add.className="gate-btn primary";
+  add.textContent="Începe cu jucătorul nou";
+  add.addEventListener("click",gateNew);
+  const msg=document.createElement("p");
+  msg.className="quiz-sum";
+  msg.id="gateMsg";
+  card.append(sep,inp,add,msg);
+  ov.appendChild(card);
+  document.body.appendChild(ov);
+}
 function playerAdd(){
   const inp=document.getElementById("playerName");
   const name=(inp.value||"").trim().slice(0,20);
@@ -9460,6 +9525,7 @@ function initSettings(){
   document.getElementById("syncOffBtn").addEventListener("click",syncDisconnect);
   /* sincronizare doar când ieși din joc (aplicația sau tab-ul trece în fundal / se închide) */
   document.addEventListener("visibilitychange",()=>{ if(document.visibilityState==="hidden") syncNow(false); });
+  playerGateInit();
   historyInit();
   if(GOOGLE_CLIENT_ID && localStorage.getItem(DRIVE_FLAG)) setTimeout(()=>syncNow(false),1500);
   document.getElementById("settingsOverlay").addEventListener("click",(e)=>{
