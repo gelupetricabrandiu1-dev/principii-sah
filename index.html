@@ -766,6 +766,9 @@ body.desk-board.stats-page-active .wrap{max-width:960px;}
 .stats-table tr.pick{cursor:pointer;}
 .stats-table tr.sel td{background:var(--accent-soft);}
 @media (max-width:760px){ .stats-layout{grid-template-columns:1fr;} }
+.h2h-item{border-top:1px solid var(--border); padding-top:10px; margin-top:10px; display:flex; flex-direction:column; gap:6px;}
+.h2h-item strong{font-size:.95rem;}
+.h2h-item .btn{align-self:flex-start;}
 .player-box{display:flex; flex-direction:column; gap:10px; width:100%;}
 .player-add{display:flex; flex-direction:column; gap:8px;}
 .player-box input[type=text]{padding:10px 12px; border-radius:12px; border:1px solid var(--border); background:var(--surface-2); color:var(--text); font-family:inherit; font-size:.95rem;}
@@ -1085,6 +1088,7 @@ body.desk-board.stats-page-active .wrap{max-width:960px;}
     <button class="pagetab" data-page="8" type="button">Capcane din deschideri<span class="count">174</span></button>
     <button class="pagetab" data-page="10" type="button">Test deschideri</button>
     <button class="pagetab" data-page="11" type="button">Statistică deschideri</button>
+    <button class="pagetab" data-page="12" type="button">H2H deschideri</button>
   </div>
 
   <div class="levelrow" id="levelrow">
@@ -1176,6 +1180,7 @@ body.desk-board.stats-page-active .wrap{max-width:960px;}
         <button class="btn hint-btn" id="openHint" type="button" title="Arată următoarea mutare">💡 Indiciu</button>
         <button class="btn" id="openToTest" type="button" title="Mergi la testul de deschideri">🎲 Test</button>
         <button class="btn" id="openToStats" type="button" title="Vezi statistica deschiderilor">📊 Statistici</button>
+        <button class="btn" id="openToH2H" type="button" title="Cu ce deschidere poți contracara">⚔️ H2H</button>
       </div>
       <div class="open-msg" id="openPlayMsg"></div>
       <div class="actions open-controls">
@@ -1214,6 +1219,25 @@ body.desk-board.stats-page-active .wrap{max-width:960px;}
         <div class="stats-detail" id="statsDetail"></div>
       </div>
       <p class="quiz-sum">Se contorizează doar liniile terminate: din testul de deschideri și din „Joacă linia” de pe pagina Deschideri. Apasă pe o deschidere ca să vezi câte greșeli ai făcut la ea.</p>
+    </div>
+  </div>
+  <div class="game-wrap" id="h2hContainer">
+    <div class="content-card stats-card">
+      <div>
+        <div class="eyebrow">H2H deschideri</div>
+        <h2 style="font-size:1.3rem;">Cu ce deschidere poți răspunde</h2>
+      </div>
+      <p class="quiz-sum">Alege o deschidere din listă. În dreapta vezi deschiderile care o pot contracara. Apasă „▶ Joacă” ca să deschizi direct linia respectivă.</p>
+      <div class="quiz-chips" id="h2hLevel">
+        <button class="quiz-chip active" type="button" data-lv="all">Toate</button>
+        <button class="quiz-chip" type="button" data-lv="usor">Ușor</button>
+        <button class="quiz-chip" type="button" data-lv="mediu">Mediu</button>
+        <button class="quiz-chip" type="button" data-lv="greu">Greu</button>
+      </div>
+      <div class="stats-layout">
+        <div class="stats-list"><div class="stats-table-wrap"><table class="stats-table" id="h2hTable"></table></div></div>
+        <div class="stats-detail" id="h2hDetail"></div>
+      </div>
     </div>
   </div>
   <div class="game-wrap" id="quizContainer">
@@ -3549,7 +3573,7 @@ function buildPageSelect(){
   updateDiagToggle();
 }
 /* phone: page menu as large tiles */
-const PAGE_ICONS={1:"♙",2:"♗",3:"♘",4:"♖",5:"🛡️",6:"⚔️",7:"🖥️",8:"⚠️",9:"📖",10:"🎲",11:"📊"};
+const PAGE_ICONS={1:"♙",2:"♗",3:"♘",4:"♖",5:"🛡️",6:"⚔️",7:"🖥️",8:"⚠️",9:"📖",10:"🎲",11:"📊",12:"⚔️"};
 function pageTabParts(b){
   const c=b.querySelector(".count");
   const name=c?b.textContent.slice(0,b.textContent.length-c.textContent.length).trim():b.textContent.trim();
@@ -3726,6 +3750,7 @@ function switchPage(pg){
   else if(pg===9){ openingsEnter(); }
   else if(pg===10){ quizEnter(); }
   else if(pg===11){ statsEnter(); }
+  else if(pg===12){ h2hEnter(); }
   else { loadPrinciple(0); }
 }
 
@@ -3733,7 +3758,8 @@ function applyPageVisibility(){
   const isGame=currentPage===7;
   const isOpen=currentPage===9;
   const isQuiz=currentPage===10;
-  const isStats=currentPage===11;
+  const isStats=currentPage===11||currentPage===12;
+  const isH2H=currentPage===12;
   const isDefense=currentPage===5;
   const isBulkTactics=currentPage===6||currentPage===8;
   document.querySelector(".main").style.display=(isGame||isOpen||isQuiz||isStats)?"none":"grid";
@@ -3746,7 +3772,8 @@ function applyPageVisibility(){
   document.getElementById("progress").style.display=(isGame||isOpen||isQuiz||isStats)?"none":"";
   document.getElementById("openingsContainer").classList.toggle("show",isOpen);
   document.getElementById("quizContainer").classList.toggle("show",isQuiz);
-  document.getElementById("statsContainer").classList.toggle("show",isStats);
+  document.getElementById("statsContainer").classList.toggle("show",currentPage===11);
+  document.getElementById("h2hContainer").classList.toggle("show",isH2H);
   document.body.classList.toggle("stats-page-active",isStats);
   document.getElementById("openTopbar").style.display=isOpen?"":"none";
   if(!isOpen) openingsStop();
@@ -6894,6 +6921,111 @@ function statsRender(){
   });
   statsDetailRender(rows.find(r=>r.k===statsSelected)||null);
 }
+/* H2H: pentru fiecare deschidere, deschiderile care o pot contracara (numele trebuie să fie exact cele din listă) */
+const H2H_DATA={
+  "Gambitul Regelui acceptat":[
+    {c:"Gambitul Regelui refuzat", t:"Negrul refuză gambitul cu 2...Bc5. Dezvoltă, urmărește centrul și ține pionul f2 sub presiune; nu captura pionul prea devreme."},
+    {c:"Contragambitul Falkbeer", t:"Negrul răspunde cu 2...d5 și lovește centrul. După 3.exd5 e4, Negrul are spațiu și inițiativă."}
+  ],
+  "Partida Spaniolă":[
+    {c:"Partida Spaniolă: Apărarea Berlin, Varianta l'Hermet, Apărarea Berlin Wall", t:"Negrul joacă 3...Nf6 și rămâne solid: greu de atacat, iar în final are șanse bune."}
+  ]
+};
+let h2hSelected=null, h2hLevel="all", h2hReady=false;
+/* aceleași niveluri ca pe pagina Deschideri: după numărul de mutări al liniei */
+function h2hInLevel(e){
+  if(h2hLevel==="all") return e.end!=="theory";
+  if(e.end==="theory") return false;
+  const n=Math.ceil(e.moves.length/2), r=OPEN_LEVELS[h2hLevel];
+  return n>=r[0] && n<=r[1];
+}
+function h2hFamilyInLevel(name){
+  return OPENINGS_DATA.some(e=>e.op===name && h2hInLevel(e));
+}
+function h2hEnter(){
+  if(!h2hReady){
+    h2hReady=true;
+    document.querySelectorAll("#h2hLevel button").forEach(b=>b.addEventListener("click",()=>{ h2hLevel=b.dataset.lv; h2hRender(); }));
+  }
+  h2hRender();
+}
+function h2hFamilies(){
+  const seen=[];
+  OPENINGS_DATA.forEach(e=>{ if(h2hInLevel(e) && seen.indexOf(e.op)<0) seen.push(e.op); });
+  return seen;
+}
+/* deschide direct prima linie a deschiderii alese (din nivelul ales), în modul Joacă */
+function h2hPlay(name){
+  const idx=OPENINGS_DATA.findIndex(e=>e.op===name && h2hInLevel(e));
+  if(idx<0) return;
+  switchPage(9);
+  openingsSet(idx,0);
+  openingsSetMode("play");
+}
+function h2hPlayButton(name){
+  const b=document.createElement("button");
+  b.type="button";
+  b.className="btn primary";
+  b.textContent="▶ Joacă";
+  b.addEventListener("click",()=>h2hPlay(name));
+  return b;
+}
+function h2hDetailRender(){
+  const box=document.getElementById("h2hDetail");
+  box.textContent="";
+  if(!h2hSelected){
+    const p=document.createElement("p");
+    p.className="quiz-sum";
+    p.textContent="Alege o deschidere din listă ca să vezi cu ce poate fi contracarată.";
+    box.appendChild(p);
+    return;
+  }
+  const h=document.createElement("h3");
+  h.textContent=h2hSelected;
+  box.appendChild(h);
+  box.appendChild(h2hPlayButton(h2hSelected));
+  const list=(H2H_DATA[h2hSelected]||[]).filter(item=>h2hFamilyInLevel(item.c));
+  if(!list.length){
+    const p=document.createElement("p");
+    p.className="quiz-sum";
+    p.textContent="Pentru această deschidere nu am încă o contra-deschidere notată.";
+    box.appendChild(p);
+    return;
+  }
+  const sub=document.createElement("p");
+  sub.className="quiz-sum";
+  sub.textContent="Poate fi contracarată cu:";
+  box.appendChild(sub);
+  list.forEach(item=>{
+    const card=document.createElement("div");
+    card.className="h2h-item";
+    const n=document.createElement("strong");
+    n.textContent=item.c;
+    const tx=document.createElement("p");
+    tx.className="quiz-sum";
+    tx.textContent=item.t;
+    card.append(n,tx,h2hPlayButton(item.c));
+    box.appendChild(card);
+  });
+}
+function h2hRender(){
+  const t=document.getElementById("h2hTable");
+  t.textContent="";
+  document.querySelectorAll("#h2hLevel button").forEach(b=>b.classList.toggle("active",b.dataset.lv===h2hLevel));
+  if(h2hSelected && !h2hFamilyInLevel(h2hSelected)) h2hSelected=null;
+  h2hFamilies().forEach(name=>{
+    const tr=document.createElement("tr");
+    tr.className="pick"+(name===h2hSelected?" sel":"");
+    tr.addEventListener("click",()=>{ h2hSelected=name; h2hRender(); });
+    const td=document.createElement("td");
+    td.className="name";
+    td.textContent=name;
+    td.title=name;
+    tr.appendChild(td);
+    t.appendChild(tr);
+  });
+  h2hDetailRender();
+}
 function quizEnter(){
   if(!quizReady) quizInit();
   quizReset();
@@ -6936,6 +7068,7 @@ function openingsEnter(){
     document.getElementById("openHint").addEventListener("click",openingsHint);
     document.getElementById("openToTest").addEventListener("click",()=>switchPage(10));
     document.getElementById("openToStats").addEventListener("click",()=>switchPage(11));
+    document.getElementById("openToH2H").addEventListener("click",()=>switchPage(12));
     document.getElementById("openFilterBtn").addEventListener("click",(ev)=>{
       const open=document.getElementById("openTopbar").classList.toggle("filters-open");
       ev.currentTarget.setAttribute("aria-expanded",open?"true":"false");
