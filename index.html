@@ -7128,7 +7128,8 @@ function asmGroups(){
     });
     g.subs=[...sub.values()].map(s=>({prefix:s.prefix, ops:[...new Set(s.ops)]}));
   });
-  return out.sort((a,b)=>b.lines.length-a.lines.length);
+  /* pe pagină apar doar grupurile cu cel puțin 3 linii */
+  return out.filter(g=>g.lines.length>=3).sort((a,b)=>b.lines.length-a.lines.length);
 }
 /* deschide direct prima linie a deschiderii, în modul Joacă */
 function asmPlay(name){
@@ -7187,8 +7188,8 @@ function asmDetailRender(g){
 function asmRender(){
   document.querySelectorAll("#asmLevel button").forEach(b=>b.classList.toggle("active",b.dataset.lv===asmLevel));
   const groups=asmGroups();
-  const total=OPENINGS_DATA.filter(e=>asmInLevel(e)).length;
-  document.getElementById("asmSummary").textContent=groups.length+" grupuri din "+total+" linii. Liniile din același grup încep identic.";
+  const total=groups.reduce((s,g)=>s+g.lines.length,0);
+  document.getElementById("asmSummary").textContent=groups.length+" grupuri cu cel puțin 3 linii, care cuprind "+total+" linii. Liniile din același grup încep identic.";
   const t=document.getElementById("asmTable");
   t.textContent="";
   if(asmSelected && !groups.some(g=>g.key===asmSelected)) asmSelected=null;
