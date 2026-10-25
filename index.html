@@ -7105,7 +7105,7 @@ function h2hRender(){
 function scrollToDetailOnPhone(id){
   if(!window.matchMedia || !window.matchMedia("(max-width:760px)").matches) return;
   const el=document.getElementById(id);
-  if(el) el.scrollIntoView({behavior:"smooth", block:"start"});
+  if(el) el.scrollIntoView({block:"start"});
 }
 let asmSelected=null, asmReady=false, asmLevel="all";
 /* aceleași niveluri ca pe pagina Deschideri: după numărul de mutări al liniei */
