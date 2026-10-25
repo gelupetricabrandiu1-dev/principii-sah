@@ -5806,6 +5806,12 @@ function renderGame(){
   document.getElementById("hintPanel").classList.remove("show");
 }
 
+/* un singur număr: avansul tău de puncte (+2 = ești cu 2 înainte, −5 = ești cu 5 în urmă) */
+function capDiffHtml(d){
+  if(d===0) return '<span class="cap-score cap-even" title="Aceleași puncte">0</span>';
+  if(d>0) return '<span class="cap-score" title="Ai '+d+' puncte în plus">+'+d+'</span>';
+  return '<span class="cap-score cap-lost" title="Ai '+(-d)+' puncte în minus">−'+(-d)+'</span>';
+}
 function renderCaptures(){
   const hist=game.history({verbose:true});
   const byUser=[], byEngine=[];
@@ -5821,9 +5827,9 @@ function renderCaptures(){
   const oppGlyph = humanColor==="w"?PIECE_GLYPH:PIECE_GLYPH_W;
   const ownGlyph = humanColor==="w"?PIECE_GLYPH_W:PIECE_GLYPH;
   if(userEl) userEl.innerHTML=byUser.map(t=>'<span class="cap-piece">'+oppGlyph[t]+'</span>').join("")
-    +'<span class="cap-score" title="Puncte capturate de tine">+'+userScore+'</span>';
+    +capDiffHtml(userScore-engineScore);
   if(engineEl) engineEl.innerHTML=byEngine.map(t=>'<span class="cap-piece">'+ownGlyph[t]+'</span>').join("")
-    +'<span class="cap-score cap-lost" title="Puncte pierdute de tine">+'+engineScore+'</span>';
+    ;
 }
 
 function gameStatusText(){
@@ -6092,9 +6098,9 @@ function openingsRenderCaptures(g){
   const oppGlyph = openUserSide==="w"?PIECE_GLYPH:PIECE_GLYPH_W;
   const ownGlyph = openUserSide==="w"?PIECE_GLYPH_W:PIECE_GLYPH;
   userEl.innerHTML=byUser.map(t=>'<span class="cap-piece">'+oppGlyph[t]+'</span>').join("")
-    +'<span class="cap-score" title="Puncte capturate de tine">+'+userScore+'</span>';
+    +capDiffHtml(userScore-engineScore);
   engineEl.innerHTML=byEngine.map(t=>'<span class="cap-piece">'+ownGlyph[t]+'</span>').join("")
-    +'<span class="cap-score cap-lost" title="Puncte pierdute de tine">+'+engineScore+'</span>';
+    ;
 }
 function openingsRender(){
   const e=OPENINGS_DATA[openIdx];
