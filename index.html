@@ -9230,6 +9230,7 @@ function playerCopyDefault(name){
   for(let i=0;i<localStorage.length;i++) keys.push(localStorage.key(i));
   keys.forEach(k=>{
     if(!k || k.indexOf("@")>=0 || DEVICE_KEYS.indexOf(k)>=0) return;
+    if(k.indexOf("principii-sah-statistica")===0) return; /* statistica pornește de la zero pentru un profil nou */
     if(k.indexOf("sah-principii-")!==0 && k.indexOf("principii-sah-")!==0) return;
     const target=k+"@"+name;
     if(localStorage.getItem(target)===null) localStorage.setItem(target,localStorage.getItem(k));
