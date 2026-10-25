@@ -6500,7 +6500,7 @@ function quizRecord(i,mistakes){
 }
 function quizFinish(){
   const i=quizList[quizPos], e=OPENINGS_DATA[i];
-  if(quizUnknown){ quizResults[quizPos]="unk"; quizAddUnknown(i); }
+  if(quizUnknown){ quizResults[quizPos]="unk"; quizAddUnknown(i); statRecord(i,"u"); }
   else { quizRecord(i,quizMistakes); statRecord(i,quizMistakes); quizResults[quizPos]=quizMistakes===0?"ok":"bad"; }
   quizRenderMarks();
   quizBandSet(i,true);
@@ -6719,21 +6719,24 @@ function quizInit(){
 /* statistica: pentru fiecare deschidere, câte linii au fost făcute cu 0, 1, 2… greșeli */
 const STAT_KEY="principii-sah-statistica";
 const STAT_MAX=5; /* 5 înseamnă 5 sau mai multe greșeli */
-const STAT_COLORS=["#2e9e5b","#e6b422","#f08c2e","#d9534f","#a02c2c","#6b1f1f","#9aa0a6"];
-const STAT_LABELS=["fără greșeli","1 greșeală","2 greșeli","3 greșeli","4 greșeli","5 sau mai multe","detaliu nesalvat"];
+const STAT_COLORS=["#2e9e5b","#e6b422","#f08c2e","#d9534f","#a02c2c","#6b1f1f","#5b6b8c","#9aa0a6"];
+const STAT_LABELS=["fără greșeli","1 greșeală","2 greșeli","3 greșeli","4 greșeli","5 sau mai multe","nu am știut","detaliu nesalvat"];
 let statsSelected=null;
 function statLoad(){ try{ return JSON.parse(ppGet(STAT_KEY)||"{}")||{}; }catch(e){ return {}; } }
 /* m[n] = câte linii cu n greșeli; ultima poziție = linii salvate înainte de detaliu */
+/* u = linii la care am apăsat „Nu știu” (contează ca neperfecte) */
 function statCounts(s){
   const m=s.m||[s.ok||0,0,0,0,0,0];
-  return [...m, s.m ? (s.legacy||0) : (s.bad||0)];
+  return [...m, s.u||0, s.m ? (s.legacy||0) : (s.bad||0)];
 }
+/* mistakes = numărul de greșeli, sau "u" dacă am apăsat „Nu știu” */
 function statRecord(i,mistakes){
   const st=statLoad(), k=openingsKey(i), s=st[k]||{ok:0,bad:0};
   if(!s.m){ s.m=[s.ok||0,0,0,0,0,0]; s.legacy=s.bad||0; }
-  s.m[Math.min(mistakes,STAT_MAX)]++;
+  if(mistakes==="u") s.u=(s.u||0)+1;
+  else s.m[Math.min(mistakes,STAT_MAX)]++;
   s.ok=s.m[0];
-  s.bad=s.m.slice(1).reduce((a,b)=>a+b,0)+(s.legacy||0);
+  s.bad=s.m.slice(1).reduce((a,b)=>a+b,0)+(s.u||0)+(s.legacy||0);
   st[k]=s;
   try{ ppSet(STAT_KEY,JSON.stringify(st)); }catch(e){}
 }
