@@ -6956,7 +6956,7 @@ function statsRender(){
   rows.forEach(r=>{
     const tr=document.createElement("tr");
     tr.className="pick"+(r.k===statsSelected?" sel":"");
-    tr.addEventListener("click",()=>{ statsSelected=r.k; statsRender(); });
+    tr.addEventListener("click",()=>{ statsSelected=r.k; statsRender(); scrollToDetailOnPhone("statsDetail"); });
     const name=document.createElement("td");
     name.className="name";
     name.textContent=(r.tag?r.tag+" · ":"")+r.e.op;
@@ -7080,7 +7080,7 @@ function h2hRender(){
   rows.forEach(({name,cs})=>{
     const tr=document.createElement("tr");
     tr.className="pick"+(name===h2hSelected?" sel":"");
-    tr.addEventListener("click",()=>{ h2hSelected=name; h2hRender(); });
+    tr.addEventListener("click",()=>{ h2hSelected=name; h2hRender(); scrollToDetailOnPhone("h2hDetail"); });
     const td=document.createElement("td");
     td.className="name";
     td.title=name;
@@ -7101,6 +7101,12 @@ function h2hRender(){
 }
 /* asemănări: liniile grupate după începutul lor, calculat din datele deschiderilor (nimic scris manual):
    grup = primele 2 mutări ale fiecărei părți; subgrup = primele 3 */
+/* pe telefon detaliul e sub listă: derulăm la el după ce alegi un rând */
+function scrollToDetailOnPhone(id){
+  if(!window.matchMedia || !window.matchMedia("(max-width:760px)").matches) return;
+  const el=document.getElementById(id);
+  if(el) el.scrollIntoView({behavior:"smooth", block:"start"});
+}
 let asmSelected=null, asmReady=false, asmLevel="all";
 /* aceleași niveluri ca pe pagina Deschideri: după numărul de mutări al liniei */
 function asmInLevel(e){
@@ -7189,7 +7195,7 @@ function asmRender(){
   groups.forEach(g=>{
     const tr=document.createElement("tr");
     tr.className="pick"+(g.key===asmSelected?" sel":"");
-    tr.addEventListener("click",()=>{ asmSelected=g.key; asmRender(); });
+    tr.addEventListener("click",()=>{ asmSelected=g.key; asmRender(); scrollToDetailOnPhone("asmDetail"); });
     const td=document.createElement("td");
     td.className="name";
     const nm=document.createElement("div");
