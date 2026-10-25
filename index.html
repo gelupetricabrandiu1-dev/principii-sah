@@ -742,6 +742,11 @@ button.btn.color-pick-btn:hover{background:var(--accent-soft); filter:none;}
 .stats-table th, .stats-table td{padding:7px 8px; border-bottom:1px solid var(--border); text-align:left; vertical-align:top;}
 .stats-table th{color:var(--text-dim); font-size:.8rem; text-transform:uppercase; letter-spacing:.03em;}
 .stats-table .num{text-align:right; white-space:nowrap;}
+.stats-table td.name{max-width:0; width:100%; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+.stats-pct{display:flex; align-items:center; justify-content:flex-end; gap:8px;}
+.stats-bar{display:flex; flex:1; min-width:60px; height:12px; border-radius:6px; overflow:hidden; background:var(--surface-2);}
+.stats-bar .ok{background:#2e9e5b; height:100%;}
+.stats-bar .bad{background:#c94a4a; height:100%;}
 .player-box{display:flex; flex-direction:column; gap:10px; width:100%;}
 .player-add{display:flex; flex-direction:column; gap:8px;}
 .player-box input[type=text]{padding:10px 12px; border-radius:12px; border:1px solid var(--border); background:var(--surface-2); color:var(--text); font-family:inherit; font-size:.95rem;}
@@ -6715,6 +6720,15 @@ function statsRender(){
     rows.push({e,s,pct:statPct(s)});
   });
   rows.sort((a,b)=>(b.pct-a.pct)||((b.s.ok+b.s.bad)-(a.s.ok+a.s.bad)));
+  /* variante cu aceeași denumire: arătăm mutarea de la care se deosebesc */
+  rows.forEach(r=>{
+    const same=rows.filter(o=>o!==r && o.e.op===r.e.op);
+    r.tag="";
+    if(!same.length) return;
+    let d=0;
+    same.forEach(o=>{ let k=0; while(k<r.e.sans.length && r.e.sans[k]===o.e.sans[k]) k++; d=Math.max(d,k); });
+    if(d<r.e.sans.length) r.tag=(Math.floor(d/2)+1)+(d%2===0?".":"… ")+r.e.sans[d];
+  });
   const tot=ok+bad;
   document.getElementById("statsSummary").textContent = tot
     ? "Total: "+ok+" făcute perfect din "+tot+" linii terminate ("+Math.round(ok*100/tot)+"%). Linii încercate: "+rows.length+" din "+OPENINGS_DATA.filter(e=>e.end!=="theory").length+"."
@@ -6730,14 +6744,37 @@ function statsRender(){
     head.appendChild(th);
   });
   t.appendChild(head);
-  rows.forEach(({e,s,pct})=>{
+  rows.forEach(r=>{
     const tr=document.createElement("tr");
-    [e.op+" · "+e.sans.slice(0,8).map((m,k)=>(k%2===0?(k/2+1)+"."+m:m)).join(" "), String(s.ok), String(s.bad), pct===null?"—":pct+"%"].forEach((c,k)=>{
+    const name=document.createElement("td");
+    name.className="name";
+    name.textContent=r.e.op+(r.tag?" · "+r.tag:"");
+    name.title=name.textContent;
+    tr.appendChild(name);
+    [String(r.s.ok), String(r.s.bad)].forEach(c=>{
       const td=document.createElement("td");
+      td.className="num";
       td.textContent=c;
-      if(k) td.className="num";
       tr.appendChild(td);
     });
+    const pctCell=document.createElement("td");
+    pctCell.className="num";
+    const wrap=document.createElement("div");
+    wrap.className="stats-pct";
+    const bar=document.createElement("div");
+    bar.className="stats-bar";
+    const okPart=document.createElement("span");
+    okPart.className="ok";
+    okPart.style.width=r.pct+"%";
+    const badPart=document.createElement("span");
+    badPart.className="bad";
+    badPart.style.width=(100-r.pct)+"%";
+    bar.append(okPart,badPart);
+    const txt=document.createElement("span");
+    txt.textContent=r.pct+"%";
+    wrap.append(bar,txt);
+    pctCell.appendChild(wrap);
+    tr.appendChild(pctCell);
     t.appendChild(tr);
   });
 }
