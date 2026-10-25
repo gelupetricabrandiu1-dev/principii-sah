@@ -742,10 +742,10 @@ button.btn.color-pick-btn:hover{background:var(--accent-soft); filter:none;}
 .stats-table th, .stats-table td{padding:7px 5px; border-bottom:1px solid var(--border); text-align:left; vertical-align:top;}
 .stats-table th{color:var(--text-dim); font-size:.8rem; text-transform:uppercase; letter-spacing:.03em;}
 .stats-table .num{text-align:right; white-space:nowrap; width:56px;}
-.stats-table .pct{width:86px;}
+.stats-table .pct{width:45%;}
 .stats-table td.name{max-width:0; width:100%; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
 .stats-pct{display:flex; align-items:center; justify-content:flex-end; gap:8px;}
-.stats-bar{display:flex; flex:none; width:44px; height:12px; border-radius:6px; overflow:hidden; background:var(--surface-2);}
+.stats-bar{display:flex; width:100%; height:12px; border-radius:6px; overflow:hidden; background:var(--surface-2);}
 .stats-bar .ok{background:#2e9e5b; height:100%;}
 .stats-bar .bad{background:#c94a4a; height:100%;}
 .player-box{display:flex; flex-direction:column; gap:10px; width:100%;}
@@ -6738,10 +6738,10 @@ function statsRender(){
   t.textContent="";
   if(!rows.length) return;
   const head=document.createElement("tr");
-  ["Deschidere","Perfect","Greșit","Procent"].forEach((h,k)=>{
+  ["Deschidere","Rezultat"].forEach((h,k)=>{
     const th=document.createElement("th");
     th.textContent=h;
-    if(k) th.className="num"+(k===3?" pct":"");
+    if(k) th.className="pct";
     head.appendChild(th);
   });
   t.appendChild(head);
@@ -6752,18 +6752,11 @@ function statsRender(){
     name.textContent=(r.tag?r.tag+" · ":"")+r.e.op;
     name.title=name.textContent;
     tr.appendChild(name);
-    [String(r.s.ok), String(r.s.bad)].forEach(c=>{
-      const td=document.createElement("td");
-      td.className="num";
-      td.textContent=c;
-      tr.appendChild(td);
-    });
-    const pctCell=document.createElement("td");
-    pctCell.className="num pct";
-    const wrap=document.createElement("div");
-    wrap.className="stats-pct";
+    const barCell=document.createElement("td");
+    barCell.className="pct";
     const bar=document.createElement("div");
     bar.className="stats-bar";
+    bar.title=r.s.ok+" perfect · "+r.s.bad+" cu greșeli";
     const okPart=document.createElement("span");
     okPart.className="ok";
     okPart.style.width=r.pct+"%";
@@ -6771,11 +6764,8 @@ function statsRender(){
     badPart.className="bad";
     badPart.style.width=(100-r.pct)+"%";
     bar.append(okPart,badPart);
-    const txt=document.createElement("span");
-    txt.textContent=r.pct+"%";
-    wrap.append(bar,txt);
-    pctCell.appendChild(wrap);
-    tr.appendChild(pctCell);
+    barCell.appendChild(bar);
+    tr.appendChild(barCell);
     t.appendChild(tr);
   });
 }
