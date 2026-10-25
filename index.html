@@ -1329,7 +1329,7 @@ body.desk-board.stats-page-active .wrap{max-width:960px;}
 /* jucătorii: fiecare jucător își are progresul sub cheia "cheie@jucător"; progresul de până acum rămâne sub cheile simple
    (jucătorul implicit). Setările de dispozitiv (tema, limba, volumul, mărimea tablei) rămân comune. */
 const PLAYER_KEY="principii-sah-jucator", PLAYERS_KEY="principii-sah-jucatori", STAMPS_KEY="principii-sah-sync-timp", TOMBS_KEY="principii-sah-sterse", DRIVE_FLAG="principii-sah-drive";
-const DEVICE_KEYS=["sah-principii-theme","sah-principii-lang","sah-design-v2","sah-principii-volume","principii-sah-marime-tabla","sah-principii-page",PLAYER_KEY,PLAYERS_KEY,STAMPS_KEY,TOMBS_KEY,DRIVE_FLAG];
+const DEVICE_KEYS=["sah-principii-theme","sah-principii-lang","sah-design-v2","sah-principii-volume","principii-sah-marime-tabla","sah-principii-page",PLAYER_KEY,PLAYERS_KEY,STAMPS_KEY,TOMBS_KEY,DRIVE_FLAG,"principii-sah-dispozitiv"];
 const GOOGLE_CLIENT_ID="981597003979-t5p8n7clr3h0u5haaodjr4iv93o4jkoc.apps.googleusercontent.com"; /* ID-ul clientului OAuth din Google Cloud, de forma …apps.googleusercontent.com (vezi pașii de instalare) */
 const DRIVE_SCOPE="https://www.googleapis.com/auth/drive.appdata";
 const DRIVE_FILE="progres-sah.json";
@@ -6722,7 +6722,40 @@ const STAT_MAX=5; /* 5 înseamnă 5 sau mai multe greșeli */
 const STAT_COLORS=["#2e9e5b","#e6b422","#f08c2e","#d9534f","#a02c2c","#6b1f1f","#5b6b8c","#9aa0a6"];
 const STAT_LABELS=["fără greșeli","1 greșeală","2 greșeli","3 greșeli","4 greșeli","5 sau mai multe","nu am știut","detaliu nesalvat"];
 let statsSelected=null;
-function statLoad(){ try{ return JSON.parse(ppGet(STAT_KEY)||"{}")||{}; }catch(e){ return {}; } }
+/* fiecare dispozitiv scrie doar propriile contoare, în cheia lui (se sincronizează fără să se piardă nimic);
+   statistica afișată este suma tuturor dispozitivelor, plus vechea cheie comună dacă există */
+const STAT_PREFIX="principii-sah-statistica-";
+function statDevice(){
+  let d=localStorage.getItem("principii-sah-dispozitiv");
+  if(!d){ d=Math.random().toString(36).slice(2,10); try{ localStorage.setItem("principii-sah-dispozitiv",d); }catch(e){} }
+  return d;
+}
+function statParse(raw){ try{ return JSON.parse(raw||"{}")||{}; }catch(e){ return {}; } }
+function statLoad(){
+  const p=playerName(), suf=p?"@"+p:"", total={};
+  for(let n=0;n<localStorage.length;n++){
+    const key=localStorage.key(n);
+    if(!key) continue;
+    let base=key;
+    if(suf){ if(key.slice(-suf.length)!==suf) continue; base=key.slice(0,-suf.length); }
+    else if(key.indexOf("@")>=0) continue;
+    if(base!==STAT_KEY && base.indexOf(STAT_PREFIX)!==0) continue;
+    const part=statParse(localStorage.getItem(key));
+    Object.keys(part).forEach(k=>{
+      const s=part[k], t=total[k]||{m:[0,0,0,0,0,0],u:0,legacy:0};
+      (s.m||[s.ok||0,0,0,0,0,0]).forEach((c,j)=>{ t.m[j]+=c; });
+      t.u+=s.u||0;
+      t.legacy+=s.m ? (s.legacy||0) : (s.bad||0);
+      total[k]=t;
+    });
+  }
+  Object.keys(total).forEach(k=>{
+    const t=total[k];
+    t.ok=t.m[0];
+    t.bad=t.m.slice(1).reduce((a,b)=>a+b,0)+t.u+t.legacy;
+  });
+  return total;
+}
 /* m[n] = câte linii cu n greșeli; ultima poziție = linii salvate înainte de detaliu */
 /* u = linii la care am apăsat „Nu știu” (contează ca neperfecte) */
 function statCounts(s){
@@ -6731,14 +6764,14 @@ function statCounts(s){
 }
 /* mistakes = numărul de greșeli, sau "u" dacă am apăsat „Nu știu” */
 function statRecord(i,mistakes){
-  const st=statLoad(), k=openingsKey(i), s=st[k]||{ok:0,bad:0};
-  if(!s.m){ s.m=[s.ok||0,0,0,0,0,0]; s.legacy=s.bad||0; }
+  const own=STAT_PREFIX+statDevice(), st=statParse(ppGet(own)), k=openingsKey(i);
+  const s=st[k]||{ok:0,bad:0,m:[0,0,0,0,0,0],u:0};
   if(mistakes==="u") s.u=(s.u||0)+1;
   else s.m[Math.min(mistakes,STAT_MAX)]++;
   s.ok=s.m[0];
-  s.bad=s.m.slice(1).reduce((a,b)=>a+b,0)+(s.u||0)+(s.legacy||0);
+  s.bad=s.m.slice(1).reduce((a,b)=>a+b,0)+(s.u||0);
   st[k]=s;
-  try{ ppSet(STAT_KEY,JSON.stringify(st)); }catch(e){}
+  try{ ppSet(own,JSON.stringify(st)); }catch(e){}
 }
 function statPct(s){ const n=s.ok+s.bad; return n?Math.round(s.ok*100/n):null; }
 function statsEnter(){ statsRender(); }
