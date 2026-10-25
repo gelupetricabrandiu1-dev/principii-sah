@@ -7120,14 +7120,23 @@ function asmGroups(){
   const groups=new Map();
   OPENINGS_DATA.forEach(e=>{
     if(!asmInLevel(e)) return;
-    const k=e.sans.slice(0,6).join(" ");
-    if(!groups.has(k)) groups.set(k,{key:k, prefix:asmNumbered(e.sans,6), lines:[]});
+    const k=e.sans.slice(0,3).join(" ");
+    if(!groups.has(k)) groups.set(k,{key:k, prefix:asmNumbered(e.sans,3), lines:[]});
     groups.get(k).lines.push(e);
   });
-  /* începuturi cu primele 3 mutări ale fiecărei părți identice; cel puțin 2 linii ca să fie o asemănare */
+  /* grupuri cu cel puțin 3 mutări (semimutări) identice la început; cel puțin 2 linii ca să fie o asemănare;
+     în grup, subgrupurile se despart după a 4-a semimutare */
   return [...groups.values()]
     .filter(g=>g.lines.length>=2)
-    .map(g=>({key:g.key, prefix:g.prefix, lines:g.lines, subs:[{prefix:g.prefix, ops:[...new Set(g.lines.map(e=>e.op))]}]}))
+    .map(g=>{
+      const sub=new Map();
+      g.lines.forEach(e=>{
+        const k=e.sans.slice(0,4).join(" ");
+        if(!sub.has(k)) sub.set(k,{prefix:asmNumbered(e.sans,4), ops:[]});
+        sub.get(k).ops.push(e.op);
+      });
+      return {key:g.key, prefix:g.prefix, lines:g.lines, subs:[...sub.values()].map(s=>({prefix:s.prefix, ops:[...new Set(s.ops)]}))};
+    })
     .sort((a,b)=>b.lines.length-a.lines.length);
 }
 /* deschide direct prima linie a deschiderii, în modul Joacă */
@@ -7160,7 +7169,7 @@ function asmDetailRender(g){
   box.appendChild(h);
   const sub=document.createElement("p");
   sub.className="quiz-sum";
-  sub.textContent=g.lines.length+" linii cu aceleași primele 3 mutări:";
+  sub.textContent=g.lines.length+" linii cu aceleași primele 3 mutări (semimutări):";
   box.appendChild(sub);
   g.subs.forEach(s=>{
     const card=document.createElement("div");
