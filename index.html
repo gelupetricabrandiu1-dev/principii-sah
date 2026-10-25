@@ -772,6 +772,8 @@ body.desk-board.stats-page-active .wrap{max-width:960px;}
 .h2h-item .btn{align-self:flex-start;}
 .stats-table td.name div{overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
 .h2h-counter{font-size:.8rem; color:var(--text-dim);}
+.asm-row{display:flex; justify-content:space-between; align-items:center; gap:8px;}
+.asm-row span{font-size:.88rem;}
 .player-box{display:flex; flex-direction:column; gap:10px; width:100%;}
 .player-add{display:flex; flex-direction:column; gap:8px;}
 .player-box input[type=text]{padding:10px 12px; border-radius:12px; border:1px solid var(--border); background:var(--surface-2); color:var(--text); font-family:inherit; font-size:.95rem;}
@@ -1092,6 +1094,7 @@ body.desk-board.stats-page-active .wrap{max-width:960px;}
     <button class="pagetab" data-page="10" type="button">Test deschideri</button>
     <button class="pagetab" data-page="11" type="button">Statistică deschideri</button>
     <button class="pagetab" data-page="12" type="button">H2H deschideri</button>
+    <button class="pagetab" data-page="13" type="button">Asemănări</button>
   </div>
 
   <div class="levelrow" id="levelrow">
@@ -1244,6 +1247,19 @@ body.desk-board.stats-page-active .wrap{max-width:960px;}
       <div class="stats-layout">
         <div class="stats-list"><div class="stats-table-wrap"><table class="stats-table" id="h2hTable"></table></div></div>
         <div class="stats-detail" id="h2hDetail"></div>
+      </div>
+    </div>
+  </div>
+  <div class="game-wrap" id="asmContainer">
+    <div class="content-card stats-card">
+      <div>
+        <div class="eyebrow">Asemănări</div>
+        <h2 style="font-size:1.3rem;">Deschiderile care încep la fel</h2>
+      </div>
+      <p class="quiz-sum" id="asmSummary"></p>
+      <div class="stats-layout">
+        <div class="stats-list"><div class="stats-table-wrap"><table class="stats-table" id="asmTable"></table></div></div>
+        <div class="stats-detail" id="asmDetail"></div>
       </div>
     </div>
   </div>
@@ -3580,7 +3596,7 @@ function buildPageSelect(){
   updateDiagToggle();
 }
 /* phone: page menu as large tiles */
-const PAGE_ICONS={1:"♙",2:"♗",3:"♘",4:"♖",5:"🛡️",6:"⚔️",7:"🖥️",8:"⚠️",9:"📖",10:"🎲",11:"📊",12:"⚔️"};
+const PAGE_ICONS={1:"♙",2:"♗",3:"♘",4:"♖",5:"🛡️",6:"⚔️",7:"🖥️",8:"⚠️",9:"📖",10:"🎲",11:"📊",12:"⚔️",13:"🔗"};
 function pageTabParts(b){
   const c=b.querySelector(".count");
   const name=c?b.textContent.slice(0,b.textContent.length-c.textContent.length).trim():b.textContent.trim();
@@ -3758,6 +3774,7 @@ function switchPage(pg){
   else if(pg===10){ quizEnter(); }
   else if(pg===11){ statsEnter(); }
   else if(pg===12){ h2hEnter(); }
+  else if(pg===13){ asmEnter(); }
   else { loadPrinciple(0); }
 }
 
@@ -3765,7 +3782,8 @@ function applyPageVisibility(){
   const isGame=currentPage===7;
   const isOpen=currentPage===9;
   const isQuiz=currentPage===10;
-  const isStats=currentPage===11||currentPage===12;
+  const isStats=currentPage===11||currentPage===12||currentPage===13;
+  const isAsm=currentPage===13;
   const isH2H=currentPage===12;
   const isDefense=currentPage===5;
   const isBulkTactics=currentPage===6||currentPage===8;
@@ -3781,6 +3799,7 @@ function applyPageVisibility(){
   document.getElementById("quizContainer").classList.toggle("show",isQuiz);
   document.getElementById("statsContainer").classList.toggle("show",currentPage===11);
   document.getElementById("h2hContainer").classList.toggle("show",isH2H);
+  document.getElementById("asmContainer").classList.toggle("show",isAsm);
   document.body.classList.toggle("stats-page-active",isStats);
   document.getElementById("openTopbar").style.display=isOpen?"":"none";
   if(!isOpen) openingsStop();
@@ -7072,6 +7091,106 @@ function h2hRender(){
     t.appendChild(tr);
   });
   h2hDetailRender();
+}
+/* asemănări: liniile grupate după începutul lor, calculat din datele deschiderilor (nimic scris manual):
+   grup = primele 2 mutări ale fiecărei părți; subgrup = primele 3 */
+let asmSelected=null, asmReady=false;
+function asmNumbered(sans,n){ return sans.slice(0,n).map((m,k)=>(k%2===0?(k/2+1)+"."+m:m)).join(" "); }
+function asmGroups(){
+  const groups=new Map();
+  OPENINGS_DATA.forEach(e=>{
+    if(e.end==="theory") return;
+    const k=e.sans.slice(0,4).join(" ");
+    if(!groups.has(k)) groups.set(k,{key:k, prefix:asmNumbered(e.sans,4), lines:[]});
+    groups.get(k).lines.push(e);
+  });
+  const out=[...groups.values()];
+  out.forEach(g=>{
+    const sub=new Map();
+    g.lines.forEach(e=>{
+      const k=e.sans.slice(0,6).join(" ");
+      if(!sub.has(k)) sub.set(k,{prefix:asmNumbered(e.sans,6), ops:[]});
+      sub.get(k).ops.push(e.op);
+    });
+    g.subs=[...sub.values()].map(s=>({prefix:s.prefix, ops:[...new Set(s.ops)]}));
+  });
+  return out.sort((a,b)=>b.lines.length-a.lines.length);
+}
+/* deschide direct prima linie a deschiderii, în modul Joacă */
+function asmPlay(name){
+  const idx=OPENINGS_DATA.findIndex(e=>e.op===name && e.end!=="theory");
+  if(idx<0) return;
+  switchPage(9);
+  openingsSet(idx,0);
+  openingsSetMode("play");
+}
+function asmEnter(){
+  if(!asmReady) asmReady=true;
+  asmRender();
+}
+function asmDetailRender(g){
+  const box=document.getElementById("asmDetail");
+  box.textContent="";
+  if(!g){
+    const p=document.createElement("p");
+    p.className="quiz-sum";
+    p.textContent="Alege un grup din listă ca să vezi deschiderile lui.";
+    box.appendChild(p);
+    return;
+  }
+  const h=document.createElement("h3");
+  h.textContent=g.prefix;
+  box.appendChild(h);
+  const sub=document.createElement("p");
+  sub.className="quiz-sum";
+  sub.textContent=g.lines.length+" linii. Subgrupele se deosebesc de la mutarea a 3-a:";
+  box.appendChild(sub);
+  g.subs.forEach(s=>{
+    const card=document.createElement("div");
+    card.className="h2h-item";
+    const pr=document.createElement("strong");
+    pr.textContent=s.prefix;
+    card.appendChild(pr);
+    s.ops.forEach(op=>{
+      const row=document.createElement("div");
+      row.className="asm-row";
+      const n=document.createElement("span");
+      n.textContent=op;
+      const b=document.createElement("button");
+      b.type="button";
+      b.className="btn primary";
+      b.textContent="▶";
+      b.addEventListener("click",()=>asmPlay(op));
+      row.append(n,b);
+      card.appendChild(row);
+    });
+    box.appendChild(card);
+  });
+}
+function asmRender(){
+  const groups=asmGroups();
+  const total=OPENINGS_DATA.filter(e=>e.end!=="theory").length;
+  document.getElementById("asmSummary").textContent=groups.length+" grupuri din "+total+" linii. Liniile din același grup încep identic.";
+  const t=document.getElementById("asmTable");
+  t.textContent="";
+  if(asmSelected && !groups.some(g=>g.key===asmSelected)) asmSelected=null;
+  groups.forEach(g=>{
+    const tr=document.createElement("tr");
+    tr.className="pick"+(g.key===asmSelected?" sel":"");
+    tr.addEventListener("click",()=>{ asmSelected=g.key; asmRender(); });
+    const td=document.createElement("td");
+    td.className="name";
+    const nm=document.createElement("div");
+    nm.textContent=g.prefix;
+    const cn=document.createElement("div");
+    cn.className="h2h-counter";
+    cn.textContent=g.lines.length+" linii";
+    td.title=g.prefix;
+    td.append(nm,cn);
+    tr.appendChild(td);
+    t.appendChild(tr);
+  });
+  asmDetailRender(groups.find(g=>g.key===asmSelected)||null);
 }
 function quizEnter(){
   if(!quizReady) quizInit();

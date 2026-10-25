@@ -1,4 +1,4 @@
-const CACHE_NAME = "principii-sah-v94";
+const CACHE_NAME = "principii-sah-v95";
 const CORE_ASSETS = [
   "./",
   "./index.html",
