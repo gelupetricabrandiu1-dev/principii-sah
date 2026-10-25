@@ -7123,13 +7123,18 @@ function asmGroups(){
     const sub=new Map();
     g.lines.forEach(e=>{
       const k=e.sans.slice(0,6).join(" ");
-      if(!sub.has(k)) sub.set(k,{prefix:asmNumbered(e.sans,6), ops:[]});
-      sub.get(k).ops.push(e.op);
+      if(!sub.has(k)) sub.set(k,{key:k, prefix:asmNumbered(e.sans,6), ops:[], n:0});
+      const s=sub.get(k);
+      s.ops.push(e.op);
+      s.n++;
     });
-    g.subs=[...sub.values()].map(s=>({prefix:s.prefix, ops:[...new Set(s.ops)]}));
+    /* doar subgrupurile cu cel puțin 3 linii; grupul rămâne doar cu liniile lor */
+    const kept=[...sub.values()].filter(s=>s.n>=3);
+    const keep=new Set(kept.map(s=>s.key));
+    g.subs=kept.map(s=>({prefix:s.prefix, ops:[...new Set(s.ops)]}));
+    g.lines=g.lines.filter(e=>keep.has(e.sans.slice(0,6).join(" ")));
   });
-  /* pe pagină apar doar grupurile cu cel puțin 3 linii */
-  return out.filter(g=>g.lines.length>=3).sort((a,b)=>b.lines.length-a.lines.length);
+  return out.filter(g=>g.subs.length>0).sort((a,b)=>b.lines.length-a.lines.length);
 }
 /* deschide direct prima linie a deschiderii, în modul Joacă */
 function asmPlay(name){
