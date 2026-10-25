@@ -4737,7 +4737,7 @@ function recordGameResult(score){
   eloHistory.push({date:new Date().toISOString(),oppLevel:gameLevel,oppElo,oppLabel:GAME_LEVELS[gameLevel-1].label,score,before,after,change:after-before,humanColor});
   if(eloHistory.length>300) eloHistory.shift();
   saveElo();
-  return {before,after,change:after-before};
+  return {before,after,change:after-before,rec:eloHistory[eloHistory.length-1]};
 }
 function updateEloBadge(){
   const valEl=document.getElementById("eloValue");
@@ -4761,6 +4761,8 @@ function finalizeGameResult(){
     score=0.5;
   }
   const result=recordGameResult(score);
+  game.__endRec=result.rec;
+  game.__eloBefore=result.before;
   updateEloBadge();
   showEloDelta(result.change);
 }
@@ -7760,9 +7762,28 @@ document.getElementById("eloResetBtn").addEventListener("click",()=>{
   showEloDelta(0);
   renderEloHistory();
 });
+/* anularea după șah mat: scoate rezultatul și rating-ul adăugate la final, ca partida să poată continua */
+function gameRevertEnd(){
+  const rec=game.__endRec;
+  if(rec){
+    const i=eloHistory.lastIndexOf(rec);
+    if(i>=0) eloHistory.splice(i,1);
+    userElo=game.__eloBefore;
+    saveElo();
+    updateEloBadge();
+    game.__endRec=null;
+  }
+  gameEnded=false;
+  showEloDelta(0);
+}
 document.getElementById("undoGameBtn").addEventListener("click",()=>{
-  if(!game||gameLocked) return;
-  game.undo(); game.undo();
+  if(!game||(gameLocked && !gameEnded)) return;
+  if(!game.history({verbose:true}).some(m=>m.color===humanColor)) return;
+  if(gameEnded) gameRevertEnd();
+  /* întoarce mutarea ta și răspunsul calculatorului, până la rândul tău */
+  let undone=0;
+  do{ game.undo(); undone++; } while(game.history().length>0 && (undone<2 || game.turn()!==humanColor));
+  gameLocked=false;
   const logSnaps=game.__logSnaps||[];
   if(logSnaps.length) document.getElementById("gameLog").innerHTML=logSnaps.pop();
   const hist=game.history({verbose:true});
