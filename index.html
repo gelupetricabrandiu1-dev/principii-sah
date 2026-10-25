@@ -769,6 +769,8 @@ body.desk-board.stats-page-active .wrap{max-width:960px;}
 .h2h-item{border-top:1px solid var(--border); padding-top:10px; margin-top:10px; display:flex; flex-direction:column; gap:6px;}
 .h2h-item strong{font-size:.95rem;}
 .h2h-item .btn{align-self:flex-start;}
+.stats-table td.name div{overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+.h2h-counter{font-size:.8rem; color:var(--text-dim);}
 .player-box{display:flex; flex-direction:column; gap:10px; width:100%;}
 .player-add{display:flex; flex-direction:column; gap:8px;}
 .player-box input[type=text]{padding:10px 12px; border-radius:12px; border:1px solid var(--border); background:var(--surface-2); color:var(--text); font-family:inherit; font-size:.95rem;}
@@ -7016,14 +7018,26 @@ function h2hRender(){
   t.textContent="";
   document.querySelectorAll("#h2hLevel button").forEach(b=>b.classList.toggle("active",b.dataset.lv===h2hLevel));
   if(h2hSelected && !h2hFamilyInLevel(h2hSelected)) h2hSelected=null;
-  h2hFamilies().forEach(name=>{
+  const rows=h2hFamilies().map(name=>({name, cs:(H2H_DATA[name]||[]).filter(it=>h2hFamilyInLevel(it.c)).map(it=>it.c)}));
+  /* întâi deschiderile care au contra-deschidere; aceasta e scrisă chiar în listă */
+  rows.sort((a,b)=>(b.cs.length>0)-(a.cs.length>0));
+  rows.forEach(({name,cs})=>{
     const tr=document.createElement("tr");
     tr.className="pick"+(name===h2hSelected?" sel":"");
     tr.addEventListener("click",()=>{ h2hSelected=name; h2hRender(); });
     const td=document.createElement("td");
     td.className="name";
-    td.textContent=name;
     td.title=name;
+    const nm=document.createElement("div");
+    nm.textContent=name;
+    td.appendChild(nm);
+    if(cs.length){
+      const cn=document.createElement("div");
+      cn.className="h2h-counter";
+      cn.textContent="↳ "+cs.join(", ");
+      cn.title=cs.join(", ");
+      td.appendChild(cn);
+    }
     tr.appendChild(td);
     t.appendChild(tr);
   });
