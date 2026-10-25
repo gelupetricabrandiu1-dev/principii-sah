@@ -9086,6 +9086,10 @@ async function driveWriteFile(id, data){
   const r=await driveFetch("https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart",{method:"POST", headers:{"Content-Type":"multipart/related; boundary="+b}, body:multi});
   return (await r.json()).id;
 }
+/* o singură reîncărcare la 60 de secunde în aceeași filă: fără buclă de reîncărcări */
+const RELOAD_KEY="principii-sah-reload-la";
+function reloadAllowed(){ try{ return Date.now()-Number(sessionStorage.getItem(RELOAD_KEY)||0)>60000; }catch(e){ return true; } }
+function markReload(){ try{ sessionStorage.setItem(RELOAD_KEY,String(Date.now())); }catch(e){} }
 function syncSoon(){
   if(!GOOGLE_CLIENT_ID || !localStorage.getItem(DRIVE_FLAG)) return;
   clearTimeout(syncTimer);
@@ -9135,9 +9139,12 @@ async function syncNow(interactive){
       await driveWriteFile(remote.id, out);
     }
     if(playerName() && tombs[playerName()]){ playerSwitch(""); return; }
-    if(changed){
+    if(changed && reloadAllowed()){
       syncStatus("Progres nou de pe alt dispozitiv: reîncarc pagina…");
+      markReload();
       setTimeout(()=>location.reload(),800);
+    } else if(changed){
+      syncStatus("Progres nou de pe alt dispozitiv. Reîncarcă pagina ca să-l vezi.");
     } else {
       syncStatus("Sincronizat la "+new Date().toLocaleTimeString("ro-RO",{hour:"2-digit",minute:"2-digit"}));
     }
