@@ -965,7 +965,7 @@ body.desk-board.stats-page-active .wrap{max-width:960px;}
   .tabbar button.active{color:var(--text); background:var(--surface-2);}
   .main .board-card > .actions,
   #openingsContainer .open-play-row{bottom:calc(62px + env(safe-area-inset-bottom,0px));}
-  #openingsContainer .open-play-row{grid-template-columns:1fr 1fr;}
+  #openingsContainer .open-play-row{grid-template-columns:repeat(3,1fr);}
   #openToTest,#openToStats,#openToH2H,#openToAsm{display:none !important;}
   /* titlul și sub-paginile mereu sus, înaintea filtrelor paginii */
   .wrap > .top{order:-3;}
@@ -1005,7 +1005,7 @@ body.desk-board.stats-page-active .wrap{max-width:960px;}
   body.desk-board .wrap > .subnav{order:-2;}
   /* Test, Statistici, H2H și Asemănări sunt deja în filele de sus */
   body.desk-board #openToTest,body.desk-board #openToStats,body.desk-board #openToH2H,body.desk-board #openToAsm{display:none !important;}
-  body.desk-board .open-play-row{grid-template-columns:1fr 1fr;}
+  body.desk-board .open-play-row{grid-template-columns:repeat(3,1fr);}
 }
 </style>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Public+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap">
@@ -1205,6 +1205,7 @@ body.desk-board.stats-page-active .wrap{max-width:960px;}
       </div>
       <div class="actions">
         <button class="btn" id="retryBtn">↺ Încearcă din nou</button>
+        <button class="btn" id="puzzleUndoBtn" type="button" title="Anulează ultima mutare">↶ Anulează</button>
         <button class="btn primary" id="nextBtn">Următorul principiu →</button>
         <button class="btn hint-btn" id="puzzleHintBtn" type="button" title="Arată mutarea corectă">? Indiciu</button>
       </div>
@@ -1263,6 +1264,7 @@ body.desk-board.stats-page-active .wrap{max-width:960px;}
       <div class="open-result" id="openResult"></div>
       <div class="open-play-row">
         <button class="btn" id="openMode" type="button">▶ Joacă linia</button>
+        <button class="btn" id="openUndo" type="button" title="Înapoi la mutarea ta anterioară">↶ Anulează</button>
         <button class="btn hint-btn" id="openHint" type="button" title="Arată următoarea mutare">💡 Indiciu</button>
         <button class="btn" id="openToTest" type="button" title="Mergi la testul de deschideri">🎲 Test</button>
         <button class="btn" id="openToStats" type="button" title="Vezi statistica deschiderilor">📊 Statistici</button>
@@ -4045,8 +4047,31 @@ function updateProgressLabel(){
   document.getElementById("progress").textContent=done+" / "+set.length+" "+L("rezolvate");
 }
 
+/* Anulează pe puzzle-uri: ține minte poziția dinaintea fiecărei mutări (a ta sau a adversarului din linie) */
+let puzzleUndoStack=[], oppTimer=null;
+function puzzlePush(opp){
+  puzzleUndoStack.push({fen:chess.fen(), lineIndex:lineIndex, lineActive:lineActive, opp:!!opp});
+}
+function puzzleUndo(){
+  if(!chess || !puzzleUndoStack.length) return;
+  if(oppTimer){ clearTimeout(oppTimer); oppTimer=null; }
+  let snap=puzzleUndoStack.pop();
+  while(snap && snap.opp && puzzleUndoStack.length) snap=puzzleUndoStack.pop();
+  if(!snap || snap.opp) return;
+  chess=new Chess(snap.fen);
+  lineIndex=snap.lineIndex;
+  lineActive=snap.lineActive;
+  selected=null;
+  locked=false;
+  clearSelectionVisuals();
+  document.getElementById("feedback").className="feedback";
+  document.getElementById("verdictText").textContent="";
+  document.getElementById("feedbackText").textContent="";
+  renderMain();
+}
 function loadPrinciple(i){
   const set=activeSet();
+  puzzleUndoStack=[]; if(oppTimer){ clearTimeout(oppTimer); oppTimer=null; }
   currentIndex=((i%set.length)+set.length)%set.length;
   const base=set[currentIndex];
   const p=activeData(base);
@@ -4183,6 +4208,7 @@ function finishLine(p){
 function playOpponentPly(){
   const p=currentData;
   const ply=p.line[lineIndex];
+  puzzlePush(true);
   const mv=chess.move(ply.promotion?{from:ply.from,to:ply.to,promotion:ply.promotion}:{from:ply.from,to:ply.to});
   lineIndex++;
   renderMain();
@@ -4218,14 +4244,15 @@ function handleLineUserMove(move){
   } else {
     locked=true;
     document.getElementById("feedbackText").textContent=L("Continuă — urmează răspunsul adversarului.");
-    setTimeout(playOpponentPly,450);
+    oppTimer=setTimeout(playOpponentPly,450);
   }
 }
 
 function attemptMove(from,to,promotion){
   const p=currentData;
+  puzzlePush(false);
   const move=chess.move(promotion?{from:from,to:to,promotion:promotion}:{from:from,to:to});
-  if(!move) return false;
+  if(!move){ puzzleUndoStack.pop(); return false; }
   playMoveSounds(chess);
   if(lineActive){ handleLineUserMove(move); return true; }
   clearSelectionVisuals();
@@ -4236,7 +4263,7 @@ function attemptMove(from,to,promotion){
   if(isCorrect && line && line.length>1 && linePlyMatches(line[0],from,to,move.promotion)){
     lineActive=true; lineIndex=1; locked=true;
     document.getElementById("feedbackText").textContent = document.getElementById("feedbackText").textContent+" Continuă jocul ca să vezi beneficiul complet.";
-    setTimeout(playOpponentPly,450);
+    oppTimer=setTimeout(playOpponentPly,450);
   } else {
     locked=true;
   }
@@ -4286,6 +4313,7 @@ boardEl.addEventListener("click",(e)=>{
 });
 
 document.getElementById("retryBtn").addEventListener("click",()=>{ loadPrinciple(currentIndex); });
+document.getElementById("puzzleUndoBtn").addEventListener("click",puzzleUndo);
 document.getElementById("nextBtn").addEventListener("click",()=>{ loadPrinciple(currentIndex+1); });
 document.getElementById("puzzleHintBtn").addEventListener("click",()=>{
   const p=currentData;
@@ -6133,6 +6161,7 @@ function gameAttemptMove(from,to,promotion){
   if(!move) return false;
   playMoveSounds(game);
   gameSelected=null;
+  (game.__logSnaps=game.__logSnaps||[]).push(document.getElementById("gameLog").innerHTML);
   afterUserMove(move);
   return true;
 }
@@ -6491,6 +6520,14 @@ function openingsHint(){
     ? {kind:"hint", level:2, text:"💡 "+(openMode==="play"?"Mutarea: ":"Următoarea mutare: ")+e.sans[openStep], good:[from,to]}
     : {kind:"hint", level:1, text:"💡 Mută piesa marcată (apasă din nou pentru căsuță)", good:[from]};
   openingsApplyTip();
+}
+/* Anulează pe Deschideri: înapoi la ultima poziție în care e rândul tău (în Joacă), sau cu o mutare înapoi (în vizualizare) */
+function openingsUndo(){
+  if(openStep<=0) return;
+  let s=openStep-1;
+  if(openMode==="play"){ while(s>0 && ((s%2===0)?"w":"b")!==openUserSide) s--; }
+  openingsStop();
+  openingsSetStep(s);
 }
 function openingsSetStep(s){
   openStartPrompt=false;
@@ -7487,6 +7524,7 @@ function openingsEnter(){
     lenSel.innerHTML='<option value="0">Toate lungimile</option>'+Object.keys(counts).map(Number).sort((a,b)=>a-b).map(n=>'<option value="'+n+'">'+n+' mutări ('+counts[n]+' linii)</option>').join("");
     lenSel.addEventListener("change",openingsFillSelect);
     document.getElementById("openMode").addEventListener("click",()=>openingsSetMode(openMode==="play"?"view":"play"));
+    document.getElementById("openUndo").addEventListener("click",openingsUndo);
     document.getElementById("openRestart").addEventListener("click",()=>{
       const replay=openStartPrompt || openMode!=="play";
       openingsStop();
@@ -7725,6 +7763,8 @@ document.getElementById("eloResetBtn").addEventListener("click",()=>{
 document.getElementById("undoGameBtn").addEventListener("click",()=>{
   if(!game||gameLocked) return;
   game.undo(); game.undo();
+  const logSnaps=game.__logSnaps||[];
+  if(logSnaps.length) document.getElementById("gameLog").innerHTML=logSnaps.pop();
   const hist=game.history({verbose:true});
   initTracking();
   hist.forEach(m=>updateTracking(m));
