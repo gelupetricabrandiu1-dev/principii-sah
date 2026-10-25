@@ -748,6 +748,18 @@ button.btn.color-pick-btn:hover{background:var(--accent-soft); filter:none;}
 .stats-bar{display:flex; width:100%; height:12px; border-radius:6px; overflow:hidden; background:var(--surface-2);}
 .stats-bar .ok{background:#2e9e5b; height:100%;}
 .stats-bar .bad{background:#c94a4a; height:100%;}
+body.desk-board.stats-page-active .wrap{max-width:960px;}
+.stats-layout{display:grid; grid-template-columns:minmax(0,1fr) 300px; gap:18px; align-items:start;}
+.stats-detail{border:1px solid var(--border); border-radius:14px; padding:14px; background:var(--surface);}
+.stats-detail h3{margin:0 0 6px; font-size:.98rem; line-height:1.3;}
+.stats-pie{display:block; width:180px; height:180px; margin:6px auto 0;}
+.stats-legend{list-style:none; margin:10px 0 0; padding:0; font-size:.88rem;}
+.stats-legend li{display:flex; align-items:center; gap:8px; padding:4px 0;}
+.stats-dot{width:12px; height:12px; border-radius:50%; flex:none;}
+.stats-legend .n{margin-left:auto; white-space:nowrap; font-variant-numeric:tabular-nums;}
+.stats-table tr.pick{cursor:pointer;}
+.stats-table tr.sel td{background:var(--accent-soft);}
+@media (max-width:760px){ .stats-layout{grid-template-columns:1fr;} }
 .player-box{display:flex; flex-direction:column; gap:10px; width:100%;}
 .player-add{display:flex; flex-direction:column; gap:8px;}
 .player-box input[type=text]{padding:10px 12px; border-radius:12px; border:1px solid var(--border); background:var(--surface-2); color:var(--text); font-family:inherit; font-size:.95rem;}
@@ -1185,14 +1197,17 @@ button.btn.color-pick-btn:hover{background:var(--accent-soft); filter:none;}
     </div>
   </div>
   <div class="game-wrap" id="statsContainer">
-    <div class="content-card">
+    <div class="content-card stats-card">
       <div>
         <div class="eyebrow">Statistică deschideri</div>
         <h2 style="font-size:1.3rem;">Cât de bine le știi</h2>
       </div>
       <p class="quiz-sum" id="statsSummary"></p>
-      <div class="stats-table-wrap"><table class="stats-table" id="statsTable"></table></div>
-      <p class="quiz-sum">Se contorizează doar liniile terminate: din testul de deschideri și din „Joacă linia” de pe pagina Deschideri. „Fără greșeli” înseamnă linia făcută perfect.</p>
+      <div class="stats-layout">
+        <div class="stats-list"><div class="stats-table-wrap"><table class="stats-table" id="statsTable"></table></div></div>
+        <div class="stats-detail" id="statsDetail"></div>
+      </div>
+      <p class="quiz-sum">Se contorizează doar liniile terminate: din testul de deschideri și din „Joacă linia” de pe pagina Deschideri. Apasă pe o deschidere ca să vezi câte greșeli ai făcut la ea.</p>
     </div>
   </div>
   <div class="game-wrap" id="quizContainer">
@@ -6094,7 +6109,7 @@ function openingsRender(){
   }
   if(openMode==="play"){
     if(openStep>=total){
-      if(!openDoneCounted){ openDoneCounted=true; repsRecord(openIdx); statRecord(openIdx,openPlayMistakes===0); openingsFillSelect(); }
+      if(!openDoneCounted){ openDoneCounted=true; repsRecord(openIdx); statRecord(openIdx,openPlayMistakes); openingsFillSelect(); }
       openingsMsg("Linia s-a încheiat. Ai jucat-o "+openingsTimes(repsCount(openIdx))+".","ok");
     } else if(g.turn()!==openUserSide){
       openingsMsg("Adversarul joacă…");
@@ -6486,7 +6501,7 @@ function quizRecord(i,mistakes){
 function quizFinish(){
   const i=quizList[quizPos], e=OPENINGS_DATA[i];
   if(quizUnknown){ quizResults[quizPos]="unk"; quizAddUnknown(i); }
-  else { quizRecord(i,quizMistakes); statRecord(i,quizMistakes===0); quizResults[quizPos]=quizMistakes===0?"ok":"bad"; }
+  else { quizRecord(i,quizMistakes); statRecord(i,quizMistakes); quizResults[quizPos]=quizMistakes===0?"ok":"bad"; }
   quizRenderMarks();
   quizBandSet(i,true);
   if(quizMistakes===0 && !quizUnknown) quizOk++;
@@ -6701,17 +6716,81 @@ function quizInit(){
   document.getElementById("quizBoard").addEventListener("click",quizBoardClick);
   buildBoardDom(document.getElementById("quizBoard"));
 }
-/* statistica: pentru fiecare deschidere, de câte ori a fost făcută perfect și de câte ori cu greșeli */
+/* statistica: pentru fiecare deschidere, câte linii au fost făcute cu 0, 1, 2… greșeli */
 const STAT_KEY="principii-sah-statistica";
+const STAT_MAX=5; /* 5 înseamnă 5 sau mai multe greșeli */
+const STAT_COLORS=["#2e9e5b","#e6b422","#f08c2e","#d9534f","#a02c2c","#6b1f1f","#9aa0a6"];
+const STAT_LABELS=["fără greșeli","1 greșeală","2 greșeli","3 greșeli","4 greșeli","5 sau mai multe","detaliu nesalvat"];
+let statsSelected=null;
 function statLoad(){ try{ return JSON.parse(ppGet(STAT_KEY)||"{}")||{}; }catch(e){ return {}; } }
-function statRecord(i,perfect){
+/* m[n] = câte linii cu n greșeli; ultima poziție = linii salvate înainte de detaliu */
+function statCounts(s){
+  const m=s.m||[s.ok||0,0,0,0,0,0];
+  return [...m, s.m ? (s.legacy||0) : (s.bad||0)];
+}
+function statRecord(i,mistakes){
   const st=statLoad(), k=openingsKey(i), s=st[k]||{ok:0,bad:0};
-  if(perfect) s.ok++; else s.bad++;
+  if(!s.m){ s.m=[s.ok||0,0,0,0,0,0]; s.legacy=s.bad||0; }
+  s.m[Math.min(mistakes,STAT_MAX)]++;
+  s.ok=s.m[0];
+  s.bad=s.m.slice(1).reduce((a,b)=>a+b,0)+(s.legacy||0);
   st[k]=s;
   try{ ppSet(STAT_KEY,JSON.stringify(st)); }catch(e){}
 }
 function statPct(s){ const n=s.ok+s.bad; return n?Math.round(s.ok*100/n):null; }
 function statsEnter(){ statsRender(); }
+/* cercul colorat: o felie pentru fiecare număr de greșeli */
+function statsPie(counts,total){
+  const R=80, C=90;
+  const nonZero=counts.filter(c=>c>0);
+  if(nonZero.length===1){
+    const k=counts.findIndex(c=>c>0);
+    return '<svg class="stats-pie" viewBox="0 0 180 180"><circle cx="90" cy="90" r="80" fill="'+STAT_COLORS[k]+'"/></svg>';
+  }
+  let a0=-Math.PI/2, paths="";
+  counts.forEach((c,k)=>{
+    if(!c) return;
+    const a1=a0+c/total*2*Math.PI;
+    const x0=C+R*Math.cos(a0), y0=C+R*Math.sin(a0), x1=C+R*Math.cos(a1), y1=C+R*Math.sin(a1);
+    const large=(a1-a0)>Math.PI?1:0;
+    paths+='<path d="M'+C+','+C+' L'+x0.toFixed(2)+','+y0.toFixed(2)+' A'+R+','+R+' 0 '+large+' 1 '+x1.toFixed(2)+','+y1.toFixed(2)+' Z" fill="'+STAT_COLORS[k]+'"/>';
+    a0=a1;
+  });
+  return '<svg class="stats-pie" viewBox="0 0 180 180">'+paths+'</svg>';
+}
+function statsDetailRender(r){
+  const box=document.getElementById("statsDetail");
+  box.textContent="";
+  if(!r){
+    const p=document.createElement("p");
+    p.className="quiz-sum";
+    p.textContent="Apasă pe o deschidere din listă ca să vezi câte greșeli ai făcut la ea.";
+    box.appendChild(p);
+    return;
+  }
+  const h=document.createElement("h3");
+  h.textContent=(r.tag?r.tag+" · ":"")+r.e.op;
+  box.appendChild(h);
+  const counts=statCounts(r.s), total=counts.reduce((a,b)=>a+b,0);
+  box.insertAdjacentHTML("beforeend", statsPie(counts,total));
+  const ul=document.createElement("ul");
+  ul.className="stats-legend";
+  counts.forEach((c,k)=>{
+    if(!c) return;
+    const li=document.createElement("li");
+    const dot=document.createElement("span");
+    dot.className="stats-dot";
+    dot.style.background=STAT_COLORS[k];
+    const lab=document.createElement("span");
+    lab.textContent=STAT_LABELS[k];
+    const n=document.createElement("span");
+    n.className="n";
+    n.textContent=c+" ("+Math.round(c*100/total)+"%)";
+    li.append(dot,lab,n);
+    ul.appendChild(li);
+  });
+  box.appendChild(ul);
+}
 function statsRender(){
   const st=statLoad(), rows=[];
   let ok=0, bad=0;
@@ -6720,7 +6799,7 @@ function statsRender(){
     const s=st[openingsKey(i)];
     if(!s || !(s.ok+s.bad)) return;
     ok+=s.ok; bad+=s.bad;
-    rows.push({e,s,pct:statPct(s)});
+    rows.push({e,s,k:openingsKey(i),pct:statPct(s)});
   });
   rows.sort((a,b)=>(b.pct-a.pct)||((b.s.ok+b.s.bad)-(a.s.ok+a.s.bad)));
   /* variante cu aceeași denumire: arătăm mutarea de la care se deosebesc */
@@ -6738,7 +6817,7 @@ function statsRender(){
     : "Nicio linie terminată încă. Rezultatele apar aici după un test sau după o linie jucată până la capăt.";
   const t=document.getElementById("statsTable");
   t.textContent="";
-  if(!rows.length) return;
+  if(!rows.length){ statsDetailRender(null); return; }
   const head=document.createElement("tr");
   ["Deschidere","Rezultat"].forEach((h,k)=>{
     const th=document.createElement("th");
@@ -6749,6 +6828,8 @@ function statsRender(){
   t.appendChild(head);
   rows.forEach(r=>{
     const tr=document.createElement("tr");
+    tr.className="pick"+(r.k===statsSelected?" sel":"");
+    tr.addEventListener("click",()=>{ statsSelected=r.k; statsRender(); });
     const name=document.createElement("td");
     name.className="name";
     name.textContent=(r.tag?r.tag+" · ":"")+r.e.op;
@@ -6758,7 +6839,6 @@ function statsRender(){
     barCell.className="pct";
     const bar=document.createElement("div");
     bar.className="stats-bar";
-    bar.title=r.s.ok+" perfect · "+r.s.bad+" cu greșeli";
     const okPart=document.createElement("span");
     okPart.className="ok";
     okPart.style.width=r.pct+"%";
@@ -6770,6 +6850,7 @@ function statsRender(){
     tr.appendChild(barCell);
     t.appendChild(tr);
   });
+  statsDetailRender(rows.find(r=>r.k===statsSelected)||null);
 }
 function quizEnter(){
   if(!quizReady) quizInit();
